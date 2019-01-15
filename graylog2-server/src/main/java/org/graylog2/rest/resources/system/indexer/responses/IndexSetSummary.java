@@ -24,10 +24,11 @@ import org.graylog.autovalue.WithBeanGetter;
 import org.graylog2.indexer.indexset.IndexSetConfig;
 import org.graylog2.plugin.indexer.retention.RetentionStrategyConfig;
 import org.graylog2.plugin.indexer.rotation.RotationStrategyConfig;
-import org.hibernate.validator.constraints.NotBlank;
+import org.joda.time.Duration;
 
 import javax.annotation.Nullable;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import java.time.ZonedDateTime;
@@ -97,6 +98,9 @@ public abstract class IndexSetSummary {
     @JsonProperty("index_optimization_disabled")
     public abstract boolean indexOptimizationDisabled();
 
+    @JsonProperty("field_type_refresh_interval")
+    public abstract Duration fieldTypeRefreshInterval();
+
     @JsonCreator
     public static IndexSetSummary create(@JsonProperty("id") @Nullable String id,
                                          @JsonProperty("title") @NotBlank String title,
@@ -113,10 +117,11 @@ public abstract class IndexSetSummary {
                                          @JsonProperty("creation_date") @NotNull ZonedDateTime creationDate,
                                          @JsonProperty("index_analyzer") @NotBlank String indexAnalyzer,
                                          @JsonProperty("index_optimization_max_num_segments") @Min(1L) int indexOptimizationMaxNumSegments,
-                                         @JsonProperty("index_optimization_disabled") boolean indexOptimizationDisabled) {
+                                         @JsonProperty("index_optimization_disabled") boolean indexOptimizationDisabled,
+                                         @JsonProperty("field_type_refresh_interval") Duration fieldTypeRefreshInterval) {
         return new AutoValue_IndexSetSummary(id, title, description, isDefault, isWritable, indexPrefix, shards, replicas,
                 rotationStrategyClass, rotationStrategy, retentionStrategyClass, retentionStrategy, creationDate,
-                indexAnalyzer, indexOptimizationMaxNumSegments, indexOptimizationDisabled);
+                indexAnalyzer, indexOptimizationMaxNumSegments, indexOptimizationDisabled, fieldTypeRefreshInterval);
     }
 
     public static IndexSetSummary fromIndexSetConfig(IndexSetConfig indexSet, boolean isDefault) {
@@ -136,7 +141,8 @@ public abstract class IndexSetSummary {
                 indexSet.creationDate(),
                 indexSet.indexAnalyzer(),
                 indexSet.indexOptimizationMaxNumSegments(),
-                indexSet.indexOptimizationDisabled());
+                indexSet.indexOptimizationDisabled(),
+                indexSet.fieldTypeRefreshInterval());
 
     }
 
@@ -158,6 +164,7 @@ public abstract class IndexSetSummary {
                 .indexTemplateName(indexPrefix() + "-template")
                 .indexOptimizationMaxNumSegments(indexOptimizationMaxNumSegments())
                 .indexOptimizationDisabled(indexOptimizationDisabled())
+                .fieldTypeRefreshInterval(fieldTypeRefreshInterval())
                 .build();
     }
 }

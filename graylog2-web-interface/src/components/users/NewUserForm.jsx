@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Alert, Row, Col, Button } from 'react-bootstrap';
 
@@ -11,58 +12,58 @@ const UsersStore = StoreProvider.getStore('Users');
 
 import ValidationsUtils from 'util/ValidationsUtils';
 
-const NewUserForm = React.createClass({
-  propTypes: {
-    roles: React.PropTypes.array.isRequired,
-    onSubmit: React.PropTypes.func.isRequired,
-    onCancel: React.PropTypes.func.isRequired,
-  },
+class NewUserForm extends React.Component {
+  static propTypes = {
+    roles: PropTypes.array.isRequired,
+    onSubmit: PropTypes.func.isRequired,
+    onCancel: PropTypes.func.isRequired,
+  };
 
-  getInitialState() {
-    return {
-      users: [],
-      newRoles: null,
-    };
-  },
+  state = {
+    users: [],
+    newRoles: null,
+  };
 
   componentDidMount() {
     UsersStore.loadUsers().then((users) => {
       this.setState({ users });
     });
-  },
+  }
 
-  _onUsernameChange(event) {
-    const usernameField = this.refs.username.getInputDOMNode();
+  inputs = {};
+
+  _onUsernameChange = (event) => {
+    const usernameField = this.inputs.username.getInputDOMNode();
     const usernameExists = this.state.users.some(user => user.username === event.target.value);
 
     ValidationsUtils.setFieldValidity(usernameField, usernameExists, 'Username is already taken');
-  },
+  };
 
-  _onPasswordChange() {
-    const passwordField = this.refs.password;
-    const passwordConfirmField = this.refs.password_repeat;
+  _onPasswordChange = () => {
+    const passwordField = this.inputs.password;
+    const passwordConfirmField = this.inputs.password_repeat;
 
     if (passwordField.value !== '' && passwordConfirmField.value !== '') {
       ValidationsUtils.setFieldValidity(passwordConfirmField, passwordField.value !== passwordConfirmField.value, 'Passwords do not match');
     }
-  },
+  };
 
-  _onSubmit(evt) {
+  _onSubmit = (evt) => {
     evt.preventDefault();
     const result = {};
-    Object.keys(this.refs).forEach((ref) => {
+    Object.keys(this.inputs).forEach((ref) => {
       if (ref !== 'password_repeat') {
-        result[ref] = (this.refs[ref].getValue ? this.refs[ref].getValue() : this.refs[ref].value);
+        result[ref] = (this.inputs[ref].getValue ? this.inputs[ref].getValue() : this.inputs[ref].value);
       }
     });
 
     this.props.onSubmit(result);
-  },
+  };
 
-  _onValueChange(newRoles) {
+  _onValueChange = (newRoles) => {
     const roles = newRoles.split(',');
     this.setState({ newRoles: roles });
-  },
+  };
 
   render() {
     const rolesHelp = (
@@ -81,46 +82,56 @@ const NewUserForm = React.createClass({
     }
     return (
       <form id="create-user-form" className="form-horizontal" onSubmit={this._onSubmit}>
-        <Input ref="username" name="username" id="username" type="text" maxLength={100}
+        <Input ref={(elem) => { this.inputs['username'] = elem; }} name="username" id="username" type="text" maxLength={100}
                labelClassName="col-sm-2" wrapperClassName="col-sm-10"
                label="Username" help="Select a unique user name used to log in with." required
                onChange={this._onUsernameChange} autoFocus />
 
-        <Input ref="full_name" name="fullname" id="fullname" type="text" maxLength={200}
+        <Input ref={(elem) => { this.inputs['full_name'] = elem; }} name="fullname" id="fullname" type="text" maxLength={200}
                labelClassName="col-sm-2" wrapperClassName="col-sm-10"
                label="Full Name" help="Give a descriptive name for this account, e.g. the full name." required />
 
-        <Input ref="email" name="email" id="email" type="email" maxLength={254}
+        <Input ref={(elem) => { this.inputs['email'] = elem; }} name="email" id="email" type="email" maxLength={254}
                labelClassName="col-sm-2" wrapperClassName="col-sm-10"
                label="Email Address" help="Give the contact email address." required />
 
-        <Input label="Password"
+        <Input id="password-field"
+               label="Password"
                help="Passwords must be at least 6 characters long. We recommend using a strong password."
-               labelClassName="col-sm-2" wrapperClassName="col-sm-10">
+               labelClassName="col-sm-2"
+               wrapperClassName="col-sm-10">
           <Row>
             <Col sm={6}>
-              <input className="form-control" ref="password" name="password" id="password" type="password"
+              <input className="form-control" ref={(elem) => { this.inputs['password'] = elem; }} name="password" id="password" type="password"
                      placeholder="Password" required minLength="6" onChange={this._onPasswordChange} />
             </Col>
             <Col sm={6}>
-              <input className="form-control" ref="password_repeat" id="password-repeat" type="password"
+              <input className="form-control" ref={(elem) => { this.inputs['password_repeat'] = elem; }} id="password-repeat" type="password"
                      placeholder="Repeat password" required minLength="6" onChange={this._onPasswordChange} />
             </Col>
           </Row>
         </Input>
 
-        <Input label="Roles" help={rolesHelp}
-               labelClassName="col-sm-2" wrapperClassName="col-sm-10">
-          <RolesSelect ref="roles" availableRoles={this.props.roles} userRoles={['Reader']}
-                       className="form-control" onValueChange={this._onValueChange} />
-          {rolesAlert}
+        <Input id="roles-select"
+               label="Roles"
+               help={rolesHelp}
+               labelClassName="col-sm-2"
+               wrapperClassName="col-sm-10">
+          <span>
+            <RolesSelect ref={(elem) => { this.inputs['roles'] = elem; }} availableRoles={this.props.roles} userRoles={['Reader']}
+                         className="form-control" onValueChange={this._onValueChange} />
+            {rolesAlert}
+          </span>
         </Input>
 
-        <TimeoutInput ref="session_timeout_ms" />
+        <TimeoutInput ref={(elem) => { this.inputs['session_timeout_ms'] = elem; }} />
 
-        <Input label="Time Zone" help="Choose the timezone to use to display times, or leave it as it is to use the system's default."
-               labelClassName="col-sm-2" wrapperClassName="col-sm-10">
-          <TimezoneSelect ref="timezone" className="timezone-select" />
+        <Input id="timezone-select"
+               label="Time Zone"
+               help="Choose the timezone to use to display times, or leave it as it is to use the system's default."
+               labelClassName="col-sm-2"
+               wrapperClassName="col-sm-10">
+          <TimezoneSelect ref={(elem) => { this.inputs['timezone'] = elem; }} className="timezone-select" />
         </Input>
 
         <div className="form-group">
@@ -133,7 +144,7 @@ const NewUserForm = React.createClass({
         </div>
       </form>
     );
-  },
-});
+  }
+}
 
 export default NewUserForm;

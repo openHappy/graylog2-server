@@ -35,12 +35,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.concurrent.NotThreadSafe;
 import java.net.InetAddress;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.temporal.Temporal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +64,7 @@ import static org.graylog2.plugin.Tools.ES_DATE_FORMAT_FORMATTER;
 import static org.graylog2.plugin.Tools.buildElasticSearchTimeFormat;
 import static org.joda.time.DateTimeZone.UTC;
 
+@NotThreadSafe
 public class Message implements Messages {
     private static final Logger LOG = LoggerFactory.getLogger(Message.class);
 
@@ -120,6 +131,7 @@ public class Message implements Messages {
         FIELD_MESSAGE, FIELD_ID
     );
 
+    @Deprecated
     public static final Function<Message, String> ID_FUNCTION = new MessageIdFunction();
 
     private final Map<String, Object> fields = Maps.newHashMap();
@@ -136,6 +148,39 @@ public class Message implements Messages {
     private long journalOffset = Long.MIN_VALUE;
 
     private ArrayList<Recording> recordings;
+
+    private com.codahale.metrics.Counter sizeCounter = new com.codahale.metrics.Counter();
+
+    private static final IdentityHashMap<Class<?>, Integer> classSizes = Maps.newIdentityHashMap();
+    static {
+        classSizes.put(byte.class, 1);
+        classSizes.put(Byte.class, 1);
+
+        classSizes.put(char.class, 2);
+        classSizes.put(Character.class, 2);
+
+        classSizes.put(short.class, 2);
+        classSizes.put(Short.class, 2);
+
+        classSizes.put(boolean.class, 4);
+        classSizes.put(Boolean.class, 4);
+
+        classSizes.put(int.class, 4);
+        classSizes.put(Integer.class, 4);
+
+        classSizes.put(float.class, 4);
+        classSizes.put(Float.class, 4);
+
+        classSizes.put(long.class, 8);
+        classSizes.put(Long.class, 8);
+
+        classSizes.put(double.class, 8);
+        classSizes.put(Double.class, 8);
+
+        classSizes.put(DateTime.class, 8);
+        classSizes.put(Date.class, 8);
+        classSizes.put(ZonedDateTime.class, 8);
+    }
 
     public Message(final String message, final String source, final DateTime timestamp) {
         fields.put(FIELD_ID, new UUID().toString());
@@ -158,6 +203,9 @@ public class Message implements Messages {
         for (final String key : REQUIRED_FIELDS) {
             final Object field = getField(key);
             if (field == null || field instanceof String && ((String) field).isEmpty()) {
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("Message <{}> is incomplete because the field <{}> is <{}>", fields.get(FIELD_ID), key, field);
+                }
                 return false;
             }
         }
@@ -165,6 +213,7 @@ public class Message implements Messages {
         return true;
     }
 
+    @Deprecated
     public String getValidationErrors() {
         final StringBuilder sb = new StringBuilder();
 
@@ -196,31 +245,32 @@ public class Message implements Messages {
                 continue;
             }
 
+            final Object value = entry.getValue();
             // Elasticsearch does not allow "." characters in keys since version 2.0.
             // See: https://www.elastic.co/guide/en/elasticsearch/reference/2.0/breaking_20_mapping_changes.html#_field_names_may_not_contain_dots
-            if (key != null && key.contains(".")) {
+            if (key.contains(".")) {
                 final String newKey = key.replace('.', KEY_REPLACEMENT_CHAR);
 
                 // If the message already contains the transformed key, we skip the field and emit a warning.
                 // This is still not optimal but better than implementing expensive logic with multiple replacement
                 // character options. Conflicts should be rare...
                 if (!obj.containsKey(newKey)) {
-                    obj.put(newKey, entry.getValue());
+                    obj.put(newKey, value);
                 } else {
                     LOG.warn("Keys must not contain a \".\" character! Ignoring field \"{}\"=\"{}\" in message [{}] - Unable to replace \".\" with a \"{}\" because of key conflict: \"{}\"=\"{}\"",
-                        key, entry.getValue(), getId(), KEY_REPLACEMENT_CHAR, newKey, obj.get(newKey));
+                        key, value, getId(), KEY_REPLACEMENT_CHAR, newKey, obj.get(newKey));
                     LOG.debug("Full message with \".\" in message key: {}", this);
                 }
             } else {
-                if (key != null && obj.containsKey(key)) {
+                if (obj.containsKey(key)) {
                     final String newKey = key.replace(KEY_REPLACEMENT_CHAR, '.');
                     // Deliberate warning duplicates because the key with the "." might be transformed before reaching
                     // the duplicate original key with a "_". Otherwise we would silently overwrite the transformed key.
                     LOG.warn("Keys must not contain a \".\" character! Ignoring field \"{}\"=\"{}\" in message [{}] - Unable to replace \".\" with a \"{}\" because of key conflict: \"{}\"=\"{}\"",
-                        newKey, fields.get(newKey), getId(), KEY_REPLACEMENT_CHAR, key, entry.getValue());
+                        newKey, fields.get(newKey), getId(), KEY_REPLACEMENT_CHAR, key, value);
                     LOG.debug("Full message with \".\" in message key: {}", this);
                 }
-                obj.put(key, entry.getValue());
+                obj.put(key, value);
             }
         }
 
@@ -255,6 +305,11 @@ public class Message implements Messages {
         }
 
         return obj;
+    }
+
+    // estimate the byte/char length for a field and its value
+    static long sizeForField(@Nonnull String key, @Nonnull Object value) {
+        return key.length() + sizeForValue(value);
     }
 
     @Override
@@ -293,7 +348,8 @@ public class Message implements Messages {
     }
 
     public void setSource(final String source) {
-        fields.put(FIELD_SOURCE, source);
+        final Object previousSource = fields.put(FIELD_SOURCE, source);
+        updateSize(FIELD_SOURCE, source, previousSource);
     }
 
     public void addField(final String key, final Object value) {
@@ -315,17 +371,96 @@ public class Message implements Messages {
             return;
         }
 
-        if (FIELD_TIMESTAMP.equals(trimmedKey) && value != null && value instanceof Date) {
-            fields.put(FIELD_TIMESTAMP, new DateTime(value));
+        final boolean isTimestamp = FIELD_TIMESTAMP.equals(trimmedKey);
+        if (isTimestamp && value instanceof Date) {
+            final DateTime timestamp = new DateTime(value);
+            final Object previousValue = fields.put(FIELD_TIMESTAMP, timestamp);
+            updateSize(trimmedKey, timestamp, previousValue);
+        } else if (isTimestamp && value instanceof Temporal) {
+            final Date date;
+            if (value instanceof ZonedDateTime) {
+                date = Date.from(((ZonedDateTime) value).toInstant());
+            } else if (value instanceof OffsetDateTime) {
+                date = Date.from(((OffsetDateTime) value).toInstant());
+            } else if (value instanceof LocalDateTime) {
+                final LocalDateTime localDateTime = (LocalDateTime) value;
+                final ZoneId defaultZoneId = ZoneId.systemDefault();
+                final ZoneOffset offset = defaultZoneId.getRules().getOffset(localDateTime);
+                date = Date.from(localDateTime.toInstant(offset));
+            } else if (value instanceof LocalDate) {
+                final LocalDate localDate = (LocalDate) value;
+                final LocalDateTime localDateTime = localDate.atStartOfDay();
+                final ZoneId defaultZoneId = ZoneId.systemDefault();
+                final ZoneOffset offset = defaultZoneId.getRules().getOffset(localDateTime);
+                date = Date.from(localDateTime.toInstant(offset));
+            } else if (value instanceof Instant) {
+                date = Date.from((Instant) value);
+            } else {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Unsupported temporal type {}. Using current date and time in message {}.", value.getClass(), getId());
+                }
+                date = new Date();
+            }
+
+            final DateTime timestamp = new DateTime(date);
+            final Object previousValue = fields.put(FIELD_TIMESTAMP, timestamp);
+            updateSize(trimmedKey, timestamp, previousValue);
         } else if (value instanceof String) {
             final String str = ((String) value).trim();
 
             if (isRequiredField || !str.isEmpty()) {
-                fields.put(trimmedKey, str);
+                final Object previousValue = fields.put(trimmedKey, str);
+                updateSize(trimmedKey, str, previousValue);
             }
         } else if (value != null) {
-            fields.put(trimmedKey, value);
+            final Object previousValue = fields.put(trimmedKey, value);
+            updateSize(trimmedKey, value, previousValue);
         }
+    }
+
+    private void updateSize(String fieldName, Object newValue, Object previousValue) {
+        // don't count internal fields
+        if (GRAYLOG_FIELDS.contains(fieldName)) {
+            return;
+        }
+        long newValueSize = 0;
+        long oldValueSize = 0;
+        final long oldSize = sizeCounter.getCount();
+        final int keyLength = fieldName.length();
+        // if the field is being removed, also subtract the name's length
+        if (newValue == null) {
+            sizeCounter.dec(keyLength);
+        } else {
+            newValueSize = sizeForValue(newValue);
+            sizeCounter.inc(newValueSize);
+        }
+        // if the field is new, also count its name's length
+        if (previousValue == null) {
+            sizeCounter.inc(keyLength);
+        } else {
+            oldValueSize = sizeForValue(previousValue);
+            sizeCounter.dec(oldValueSize);
+        }
+        if (LOG.isTraceEnabled()) {
+            final long newSize = sizeCounter.getCount();
+            LOG.trace("[Message size update][{}] key {}/{}, new/old/change: {}/{}/{} total: {}",
+                    getId(), fieldName, keyLength, newValueSize, oldValueSize, newSize - oldSize, newSize);
+        }
+    }
+
+    static long sizeForValue(@Nonnull Object value) {
+        long valueSize;
+        if (value instanceof CharSequence) {
+            valueSize = ((CharSequence) value).length();
+        } else {
+            final Integer classSize = classSizes.get(value.getClass());
+            valueSize = classSize == null ? 0 : classSize;
+        }
+        return valueSize;
+    }
+
+    public long getSize() {
+        return sizeCounter.getCount();
     }
 
     public static boolean validKey(final String key) {
@@ -342,6 +477,7 @@ public class Message implements Messages {
         }
     }
 
+    @Deprecated
     public void addStringFields(final Map<String, String> fields) {
         if (fields == null) {
             return;
@@ -352,6 +488,7 @@ public class Message implements Messages {
         }
     }
 
+    @Deprecated
     public void addLongFields(final Map<String, Long> fields) {
         if (fields == null) {
             return;
@@ -362,6 +499,7 @@ public class Message implements Messages {
         }
     }
 
+    @Deprecated
     public void addDoubleFields(final Map<String, Double> fields) {
         if (fields == null) {
             return;
@@ -374,7 +512,8 @@ public class Message implements Messages {
 
     public void removeField(final String key) {
         if (!RESERVED_FIELDS.contains(key)) {
-            fields.remove(key);
+            final Object removedValue = fields.remove(key);
+            updateSize(key, null, removedValue);
         }
     }
 
@@ -426,7 +565,12 @@ public class Message implements Messages {
      */
     public void addStream(Stream stream) {
         indexSets.add(stream.getIndexSet());
-        streams.add(stream);
+        if (streams.add(stream)) {
+            sizeCounter.inc(8);
+            if (LOG.isTraceEnabled()) {
+                LOG.trace("[Message size update][{}] stream added: {}", getId(), sizeCounter.getCount());
+            }
+        }
     }
 
     /**
@@ -451,6 +595,10 @@ public class Message implements Messages {
             indexSets.clear();
             for (Stream s : streams) {
                 indexSets.add(s.getIndexSet());
+            }
+            sizeCounter.dec(8);
+            if (LOG.isTraceEnabled()) {
+                LOG.trace("[Message size update][{}] stream removed: {}", getId(), sizeCounter.getCount());
             }
         }
 
@@ -501,6 +649,7 @@ public class Message implements Messages {
     }
 
     // drools seems to need the "get" prefix
+    @Deprecated
     public boolean getIsSourceInetAddress() {
         return fields.containsKey("gl2_remote_ip");
     }
@@ -561,6 +710,7 @@ public class Message implements Messages {
     }
 
     @Override
+    @Nonnull
     public Iterator<Message> iterator() {
         if (getFilterOut()) {
             return Collections.emptyIterator();
@@ -569,10 +719,10 @@ public class Message implements Messages {
     }
 
     public static abstract class Recording {
-        public static Timing timing(String name, long elapsedNanos) {
+        static Timing timing(String name, long elapsedNanos) {
             return new Timing(name, elapsedNanos);
         }
-        public static Counter counter(String name, int counter) {
+        public static Message.Counter counter(String name, int counter) {
             return new Counter(name, counter);
         }
 
@@ -582,7 +732,7 @@ public class Message implements Messages {
         private final String name;
         private final long elapsedNanos;
 
-        public Timing(String name, long elapsedNanos) {
+        Timing(String name, long elapsedNanos) {
             this.name = name;
             this.elapsedNanos = elapsedNanos;
         }
@@ -608,6 +758,8 @@ public class Message implements Messages {
         }
     }
 
+    // since we are on Java8 we can replace this with a method reference where needed
+    @Deprecated
     public static class MessageIdFunction implements Function<Message, String> {
         @Override
         public String apply(final Message input) {

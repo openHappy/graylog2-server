@@ -1,26 +1,24 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import naturalSort from 'javascript-natural-sort';
 
 import { PluginStore } from 'graylog-web-plugin/plugin';
 import { Input } from 'components/bootstrap';
 import { Select } from 'components/common';
 
-const CachePicker = React.createClass({
-
-  propTypes: {
+class CachePicker extends React.Component {
+  static propTypes = {
     onSelect: PropTypes.func.isRequired,
     selectedId: PropTypes.string,
     caches: PropTypes.array,
     pagination: PropTypes.object,
-  },
+  };
 
-  getDefaultProps() {
-    return {
-      selectedId: null,
-      caches: [],
-      pagination: {},
-    };
-  },
+  static defaultProps = {
+    selectedId: null,
+    caches: [],
+    pagination: {},
+  };
 
   render() {
     const cachePlugins = {};
@@ -34,7 +32,8 @@ const CachePicker = React.createClass({
 
     return (
       <fieldset>
-        <Input label="Cache"
+        <Input id="cache-select"
+               label="Cache"
                required
                autoFocus
                help="Select an existing cache"
@@ -44,12 +43,12 @@ const CachePicker = React.createClass({
                   clearable={false}
                   options={sortedCaches}
                   matchProp="value"
-                  onValueChange={this.props.onSelect}
+                  onChange={this.props.onSelect}
                   value={this.props.selectedId} />
         </Input>
       </fieldset>
     );
-  },
-});
+  }
+}
 
 export default CachePicker;

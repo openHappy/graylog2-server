@@ -20,7 +20,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <modules>
-        <module>../auto-value-javabean</module>
         <module>../graylog2-server</module>
         <module>../integration-tests</module>
     </modules>
@@ -28,7 +27,7 @@
     <parent>
         <groupId>org.graylog</groupId>
         <artifactId>graylog-parent</artifactId>
-        <version>2.3.0-beta.2-SNAPSHOT</version>
+        <version>3.0.0-beta.3-SNAPSHOT</version>
     </parent>
 
     <artifactId>graylog-project-parent</artifactId>
@@ -68,6 +67,25 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>${netty.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-tcnative-boringssl-static</artifactId>
+                <version>${netty-tcnative-boringssl-static.version}</version>
+                <classifier>osx-x86_64</classifier>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-tcnative-boringssl-static</artifactId>
+                <version>${netty-tcnative-boringssl-static.version}</version>
+                <classifier>linux-x86_64</classifier>
+            </dependency>
 
             <dependency>
                 <groupId>com.google.guava</groupId>
@@ -88,6 +106,11 @@
                 <groupId>com.github.zafarkhaja</groupId>
                 <artifactId>java-semver</artifactId>
                 <version>${java-semver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.graylog.repackaged</groupId>
+                <artifactId>semver4j</artifactId>
+                <version>${semver4j.version}</version>
             </dependency>
 
             <dependency>
@@ -117,30 +140,6 @@
                     </exclusion>
                 </exclusions>
             </dependency>
-
-            <dependency>
-                <groupId>net.java.dev.jna</groupId>
-                <artifactId>jna</artifactId>
-                <version>${jna.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.kie</groupId>
-                <artifactId>kie-api</artifactId>
-                <version>${drools.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.drools</groupId>
-                <artifactId>drools-compiler</artifactId>
-                <version>${drools.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <artifactId>xpp3_min</artifactId>
-                        <groupId>xpp3</groupId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-
             <dependency>
                 <groupId>io.dropwizard.metrics</groupId>
                 <artifactId>metrics-core</artifactId>
@@ -168,6 +167,11 @@
             </dependency>
             <dependency>
                 <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-jmx</artifactId>
+                <version>${metrics.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
                 <artifactId>metrics-json</artifactId>
                 <version>${metrics.version}</version>
             </dependency>
@@ -175,11 +179,6 @@
                 <groupId>org.reflections</groupId>
                 <artifactId>reflections</artifactId>
                 <version>${reflections.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.netty</groupId>
-                <artifactId>netty</artifactId>
-                <version>${netty.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.jayway.jsonpath</groupId>
@@ -211,7 +210,7 @@
                 <version>${javax.ws.rs-api.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.hibernate</groupId>
+                <groupId>org.hibernate.validator</groupId>
                 <artifactId>hibernate-validator</artifactId>
                 <version>${hibernate-validator.version}</version>
             </dependency>
@@ -392,9 +391,10 @@
             </dependency>
 
             <dependency>
-                <groupId>com.google.code.findbugs</groupId>
-                <artifactId>jsr305</artifactId>
-                <version>${jsr305.version}</version>
+                <groupId>net.jcip</groupId>
+                <artifactId>jcip-annotations</artifactId>
+                <version>${jcip-annotations.version}</version>
+                <scope>provided</scope>
             </dependency>
 
             <dependency>
@@ -420,19 +420,19 @@
             </dependency>
             <dependency>
                 <groupId>com.google.auto.value</groupId>
+                <artifactId>auto-value-annotations</artifactId>
+                <version>${auto-value.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.auto.value</groupId>
                 <artifactId>auto-value</artifactId>
                 <version>${auto-value.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
-                <groupId>com.gabrielittner.auto.value</groupId>
-                <artifactId>auto-value-extension-util</artifactId>
-                <version>${auto-value-extension-util.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.graylog.autovalue</groupId>
                 <artifactId>auto-value-javabean</artifactId>
-                <version>${project.version}</version>
+                <version>${auto-value-javabean.version}</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
@@ -447,8 +447,8 @@
                 </exclusions>
             </dependency>
             <dependency>
-                <groupId>org.graylog2.repackaged</groupId>
-                <artifactId>grok</artifactId>
+                <groupId>io.krakens</groupId>
+                <artifactId>java-grok</artifactId>
                 <version>${grok.version}</version>
             </dependency>
             <dependency>
@@ -482,9 +482,34 @@
                 <version>${validation-api.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.maxmind.geoip2</groupId>
+                <artifactId>geoip2</artifactId>
+                <version>${geoip2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.graylog.cef</groupId>
+                <artifactId>cef-parser</artifactId>
+                <version>${cef-parser.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-runtime</artifactId>
+                <version>${antlr.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jooq</groupId>
+                <artifactId>jool-java-8</artifactId>
+                <version>${jool.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.squareup</groupId>
                 <artifactId>javapoet</artifactId>
                 <version>${javapoet.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.freemarker</groupId>
+                <artifactId>freemarker</artifactId>
+                <version>${freemarker.version}</version>
             </dependency>
 
             <!-- Test dependencies -->
@@ -504,6 +529,12 @@
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-joda-time</artifactId>
                 <version>${assertj-joda-time.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.revinate</groupId>
+                <artifactId>assertj-json</artifactId>
+                <version>${assertj-json.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
@@ -543,6 +574,12 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
+                <groupId>com.github.joschi.nosqlunit</groupId>
+                <artifactId>nosqlunit-elasticsearch-http</artifactId>
+                <version>${nosqlunit-elasticsearch-http.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
                 <groupId>org.jukito</groupId>
                 <artifactId>jukito</artifactId>
                 <version>${jukito.version}</version>
@@ -555,7 +592,7 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>com.jayway.awaitility</groupId>
+                <groupId>org.awaitility</groupId>
                 <artifactId>awaitility</artifactId>
                 <version>${awaitility.version}</version>
                 <scope>test</scope>
@@ -604,6 +641,12 @@
                 <version>${okhttp.version}</version>
                 <scope>test</scope>
             </dependency>
+            <dependency>
+                <groupId>io.pkts</groupId>
+                <artifactId>pkts-core</artifactId>
+                <version>${pkts.version}</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -622,12 +665,12 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <!-- Use ALL the cores! -->
-                    <forkCount>1C</forkCount>
-                    <reuseForks>false</reuseForks>
-                    <argLine>-Djava.library.path=${project.basedir}/../lib/sigar-${sigar.version}</argLine>
+                    <forkCount>2</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <argLine>-Djava.library.path=${project.basedir}/../lib/sigar-${sigar.version} -Dio.netty.leakDetectionLevel=paranoid -Djava.awt.headless=true</argLine>
                     <excludes>
                         <exclude>**/*IntegrationTest.java</exclude>
+                        <exclude>**/*IT.java</exclude>
                     </excludes>
                     <includes>
                         <include>**/*Spec.class</include>
@@ -652,9 +695,12 @@
                         <bundledSignature>jdk-unsafe</bundledSignature>
                         <bundledSignature>jdk-deprecated</bundledSignature>
                         <bundledSignature>jdk-reflection</bundledSignature>
-                        <bundledSignature>commons-io-unsafe-${commons-io.version}</bundledSignature>
+                        <!-- Required until https://github.com/policeman-tools/forbidden-apis/pull/133 has been merged -->
+                        <bundledSignature>commons-io-unsafe-2.5</bundledSignature>
+                        <!--bundledSignature>commons-io-unsafe-${commons-io.version}</bundledSignature-->
                     </bundledSignatures>
                     <signaturesFiles>
+                        <signaturesFile>${project.basedir}/../config/forbidden-apis/netty3.txt</signaturesFile>
                         <signaturesFile>${project.basedir}/../config/forbidden-apis/signatures.txt</signaturesFile>
                     </signaturesFiles>
                 </configuration>
@@ -710,7 +756,8 @@
                 <jdk>[1.8,)</jdk>
             </activation>
             <properties>
-                <additionalparam>-Xdoclint:none</additionalparam>
+                <doclint>none</doclint>
+                <quiet>true</quiet>
             </properties>
         </profile>
         <profile>
@@ -722,10 +769,10 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>findbugs-maven-plugin</artifactId>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
                         <configuration>
-                            <excludeFilterFile>config/findbugs-exclude.xml</excludeFilterFile>
+                            <excludeFilterFile>config/spotbugs-exclude.xml</excludeFilterFile>
                             <effort>Max</effort>
                             <threshold>Default</threshold>
                             <failOnError>false</failOnError>
@@ -734,12 +781,12 @@
                                 <plugin>
                                     <groupId>com.h3xstream.findsecbugs</groupId>
                                     <artifactId>findsecbugs-plugin</artifactId>
-                                    <version>1.5.0</version>
+                                    <version>1.7.1</version>
                                 </plugin>
                                 <plugin>
                                     <groupId>com.mebigfatguy.fb-contrib</groupId>
                                     <artifactId>fb-contrib</artifactId>
-                                    <version>6.8.3</version>
+                                    <version>7.4.3</version>
                                 </plugin>
                             </plugins>
                         </configuration>
@@ -769,10 +816,6 @@
                                 </goals>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>cobertura-maven-plugin</artifactId>
                     </plugin>
                 </plugins>
             </build>

@@ -48,9 +48,6 @@ const SessionStore = Reflux.createStore({
   validate() {
     const sessionId = Store.get('sessionId');
     const username = Store.get('username');
-    if (sessionId === undefined || username === undefined) {
-      return;
-    }
     this.validatingSession = true;
     this._propagateState();
     this._validateSession(sessionId)
@@ -61,7 +58,11 @@ const SessionStore = Reflux.createStore({
             username: username || response.username,
           });
         }
-        this._removeSession();
+        if (sessionId && username) {
+          this._removeSession();
+        }
+
+        return response;
       })
       .finally(() => {
         this.validatingSession = false;

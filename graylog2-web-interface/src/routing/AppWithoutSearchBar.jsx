@@ -1,13 +1,15 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Row, Col } from 'react-bootstrap';
 
-const AppWithoutSearchBar = React.createClass({
-  propTypes: {
+class AppWithoutSearchBar extends React.Component {
+  static propTypes = {
     children: PropTypes.oneOfType([
       PropTypes.arrayOf(PropTypes.element),
       PropTypes.element,
     ]).isRequired,
-  },
+  };
+
   render() {
     return (
       <div className="container-fluid">
@@ -18,7 +20,7 @@ const AppWithoutSearchBar = React.createClass({
         </Row>
       </div>
     );
-  },
-});
+  }
+}
 
 export default AppWithoutSearchBar;

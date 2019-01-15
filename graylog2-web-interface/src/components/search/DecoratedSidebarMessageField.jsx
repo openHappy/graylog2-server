@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Input } from 'components/bootstrap';
 
@@ -5,12 +6,13 @@ import { DecoratedMessageFieldMarker } from 'components/search';
 
 import DecoratorStyles from '!style!css!components/search/decoratorStyles.css';
 
-const DecoratedSidebarMessageField = React.createClass({
-  propTypes: {
-    field: React.PropTypes.object,
-    onToggled: React.PropTypes.func,
-    selected: React.PropTypes.bool,
-  },
+class DecoratedSidebarMessageField extends React.Component {
+  static propTypes = {
+    field: PropTypes.object,
+    onToggled: PropTypes.func,
+    selected: PropTypes.bool,
+  };
+
   render() {
     const label = (<span>
       {this.props.field.name}
@@ -19,7 +21,8 @@ const DecoratedSidebarMessageField = React.createClass({
       <li>
         <div className="pull-left" />
         <div className="field-selector">
-          <Input type="checkbox"
+          <Input id="decorator-field-checkbox"
+                 type="checkbox"
                  label={label}
                  groupClassName={DecoratorStyles.decoratorFieldWrapper}
                  checked={this.props.selected}
@@ -28,7 +31,7 @@ const DecoratedSidebarMessageField = React.createClass({
         </div>
       </li>
     );
-  },
-});
+  }
+}
 
 export default DecoratedSidebarMessageField;

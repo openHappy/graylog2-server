@@ -1,18 +1,23 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { Row, Col, Button, Alert } from 'react-bootstrap';
 import { PluginStore } from 'graylog-web-plugin/plugin';
 import deepEqual from 'deep-equal';
 
+import CombinedProvider from 'injection/CombinedProvider';
 import StoreProvider from 'injection/StoreProvider';
+
 const StreamsStore = StoreProvider.getStore('Streams');
 const CurrentUserStore = StoreProvider.getStore('CurrentUser');
-const DashboardsStore = StoreProvider.getStore('Dashboards');
+const { DashboardsActions, DashboardsStore } = CombinedProvider.get('Dashboards');
 const FocusStore = StoreProvider.getStore('Focus');
 const WidgetsStore = StoreProvider.getStore('Widgets');
 
 import DocsHelper from 'util/DocsHelper';
 import UserNotification from 'util/UserNotification';
+import history from 'util/History';
 import Routes from 'routing/Routes';
 
 import { DocumentTitle, ReactGridContainer, PageHeader, Spinner, IfPermitted } from 'components/common';
@@ -23,11 +28,13 @@ import Widget from 'components/widgets/Widget';
 
 import style from './ShowDashboardPage.css';
 
-const ShowDashboardPage = React.createClass({
+const ShowDashboardPage = createReactClass({
+  displayName: 'ShowDashboardPage',
+
   propTypes: {
-    history: React.PropTypes.object.isRequired,
-    params: React.PropTypes.object.isRequired,
+    params: PropTypes.object.isRequired,
   },
+
   mixins: [Reflux.connect(CurrentUserStore), Reflux.connect(FocusStore), PermissionsMixin],
 
   getInitialState() {
@@ -37,6 +44,7 @@ const ShowDashboardPage = React.createClass({
       streamIds: null,
     };
   },
+
   componentDidMount() {
     this.loadData();
     this.listenTo(WidgetsStore, this.removeWidget);
@@ -53,19 +61,25 @@ const ShowDashboardPage = React.createClass({
     // eslint-disable-next-line react/no-did-mount-set-state
     this.setState({ forceUpdateInBackground: this.state.currentUser.preferences.updateUnfocussed });
   },
+
   componentWillUnmount() {
     if (this.loadInterval) {
       clearInterval(this.loadInterval);
     }
+    if (this.promise) {
+      this.promise.cancel();
+    }
   },
+
   DASHBOARDS_EDIT: 'dashboards:edit',
-  DEFAULT_HEIGHT: 1,
-  DEFAULT_WIDTH: 2,
+  DEFAULT_HEIGHT: 2,
+  DEFAULT_WIDTH: 4,
+
   loadData() {
     const dashboardId = this.props.params.dashboardId;
-    DashboardsStore.get(dashboardId)
+    this.promise = DashboardsStore.get(dashboardId)
       .then((dashboard) => {
-        if (!this.isMounted()) {
+        if (this.promise.isCancelled()) {
           return;
         }
 
@@ -78,18 +92,21 @@ const ShowDashboardPage = React.createClass({
       }, (response) => {
         if (response.additional && response.additional.status === 404) {
           UserNotification.error(`Unable to find a dashboard with the id <${dashboardId}>. Maybe it was deleted in the meantime.`);
-          this.props.history.pushState(null, Routes.DASHBOARDS);
+          history.push(Routes.DASHBOARDS);
         }
       });
   },
+
   shouldUpdate() {
     return Boolean(this.state.forceUpdateInBackground || this.state.focus);
   },
+
   removeWidget(props) {
     if (props.delete) {
       this.loadData();
     }
   },
+
   emptyDashboard() {
     return (
       <Row className="content">
@@ -102,6 +119,7 @@ const ShowDashboardPage = React.createClass({
       </Row>
     );
   },
+
   _defaultWidgetDimensions(widget) {
     const dimensions = { col: 0, row: 0 };
 
@@ -116,12 +134,15 @@ const ShowDashboardPage = React.createClass({
 
     return dimensions;
   },
+
   _dashboardIsEmpty(dashboard) {
     return dashboard.widgets.length === 0;
   },
+
   _validDimension(dimension) {
     return Number.isInteger(dimension) && dimension > 0;
   },
+
   formatDashboard(dashboard) {
     if (this._dashboardIsEmpty(dashboard)) {
       return this.emptyDashboard();
@@ -166,18 +187,22 @@ const ShowDashboardPage = React.createClass({
       </Row>
     );
   },
+
   _unlockDashboard(event) {
     event.preventDefault();
     if (this.state.locked) {
       this._toggleUnlock();
     }
   },
+
   _toggleUnlock() {
     this.setState({ locked: !this.state.locked });
   },
+
   _onPositionsChange(newPositions) {
-    DashboardsStore.updatePositions(this.state.dashboard, newPositions);
+    DashboardsActions.updatePositions(this.state.dashboard, newPositions);
   },
+
   _toggleFullscreen() {
     const element = document.documentElement;
     if (element.requestFullscreen) {
@@ -190,11 +215,17 @@ const ShowDashboardPage = React.createClass({
       element.msRequestFullscreen();
     }
   },
+
   _toggleUpdateInBackground() {
     const forceUpdate = !this.state.forceUpdateInBackground;
     this.setState({ forceUpdateInBackground: forceUpdate });
     UserNotification.success(`Graphs will be updated ${forceUpdate ? 'even' : 'only'} when the browser is in the ${forceUpdate ? 'background' : 'foreground'}`, '');
   },
+
+  _handleDashboardUpdate() {
+    this.loadData();
+  },
+
   render() {
     if (!this.state.dashboard) {
       return <Spinner />;
@@ -232,13 +263,17 @@ const ShowDashboardPage = React.createClass({
     }
 
     const editDashboardTrigger = !this.state.locked && !this._dashboardIsEmpty(dashboard) ?
-      (<EditDashboardModalTrigger id={dashboard.id} action="edit" title={dashboard.title}
-                                 description={dashboard.description} buttonClass="btn-info btn-xs">
+      (<EditDashboardModalTrigger id={dashboard.id}
+                                  action="edit"
+                                  title={dashboard.title}
+                                  description={dashboard.description}
+                                  onSaved={this._handleDashboardUpdate}
+                                  buttonClass="btn-info btn-xs">
         <i className="fa fa-pencil" />
       </EditDashboardModalTrigger>) : null;
     const dashboardTitle = (
       <span>
-        <span data-dashboard-id={dashboard.id} className="dashboard-title">{dashboard.title}</span>
+        {dashboard.title}
         &nbsp;
         {editDashboardTrigger}
       </span>
@@ -247,7 +282,7 @@ const ShowDashboardPage = React.createClass({
       <DocumentTitle title={`Dashboard ${dashboard.title}`}>
         <span>
           <PageHeader title={dashboardTitle}>
-            <span data-dashboard-id={dashboard.id} className="dashboard-description">{dashboard.description}</span>
+            {dashboard.description}
             {supportText}
             {actions}
           </PageHeader>

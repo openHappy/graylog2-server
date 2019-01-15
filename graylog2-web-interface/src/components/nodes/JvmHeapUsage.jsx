@@ -1,4 +1,6 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { ProgressBar } from 'react-bootstrap';
 
@@ -13,11 +15,15 @@ const MetricsStore = StoreProvider.getStore('Metrics');
 import ActionsProvider from 'injection/ActionsProvider';
 const MetricsActions = ActionsProvider.getActions('Metrics');
 
-const JvmHeapUsage = React.createClass({
+const JvmHeapUsage = createReactClass({
+  displayName: 'JvmHeapUsage',
+
   propTypes: {
     nodeId: PropTypes.string.isRequired,
   },
+
   mixins: [Reflux.connect(MetricsStore)],
+
   componentWillMount() {
     this.metricNames = {
       usedMemory: 'jvm.memory.heap.used',
@@ -27,9 +33,11 @@ const JvmHeapUsage = React.createClass({
 
     Object.keys(this.metricNames).forEach(metricShortName => MetricsActions.add(this.props.nodeId, this.metricNames[metricShortName]));
   },
+
   componentWillUnmount() {
     Object.keys(this.metricNames).forEach(metricShortName => MetricsActions.remove(this.props.nodeId, this.metricNames[metricShortName]));
   },
+
   _extractMetricValues() {
     const nodeId = this.props.nodeId;
     const nodeMetrics = this.state.metrics[nodeId];
@@ -40,6 +48,7 @@ const JvmHeapUsage = React.createClass({
 
     return metrics;
   },
+
   render() {
     let progressBar;
     let detail;

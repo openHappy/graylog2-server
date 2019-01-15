@@ -78,7 +78,7 @@ public class StreamRouterEngine {
         this.streams = streams;
         this.streamFaultManager = streamFaultManager;
         this.streamMetrics = streamMetrics;
-        this.timeLimiter = new SimpleTimeLimiter(executorService);
+        this.timeLimiter = SimpleTimeLimiter.create(executorService);
         this.streamProcessingTimeout = streamFaultManager.getStreamProcessingTimeout();
         this.fingerprint = new StreamListFingerprint(streams).getFingerprint();
         this.defaultStreamProvider = defaultStreamProvider;
@@ -264,12 +264,16 @@ public class StreamRouterEngine {
     private class Rule {
         private final Stream stream;
         private final StreamRule rule;
+        private final String streamId;
+        private final String streamRuleId;
         private final StreamRuleMatcher matcher;
         private final Stream.MatchingType matchingType;
 
         public Rule(Stream stream, StreamRule rule, Stream.MatchingType matchingType) throws InvalidStreamRuleTypeException {
             this.stream = stream;
             this.rule = rule;
+            this.streamId = stream.getId();
+            this.streamRuleId = rule.getId();
             this.matchingType = matchingType;
             this.matcher = StreamRuleMatcherFactory.build(rule.getType());
         }
@@ -281,7 +285,7 @@ public class StreamRouterEngine {
         @Nullable
         public Stream match(Message message) {
             // TODO Add missing message recordings!
-            try (final Timer.Context ignored = streamMetrics.getExecutionTimer(rule.getId()).time()) {
+            try (final Timer.Context ignored = streamMetrics.getExecutionTimer(streamId, streamRuleId).time()) {
                 if (matcher.match(message, rule)) {
                     return stream;
                 } else {
@@ -291,7 +295,7 @@ public class StreamRouterEngine {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Error matching stream rule <" + rule.getType() + "/" + rule.getValue() + ">: " + e.getMessage(), e);
                 }
-                streamMetrics.markExceptionMeter(rule.getStreamId());
+                streamMetrics.markExceptionMeter(streamId);
                 return null;
             }
         }
@@ -299,19 +303,19 @@ public class StreamRouterEngine {
         @Nullable
         private Stream matchWithTimeOut(final Message message, long timeout, TimeUnit unit) {
             Stream matchedStream = null;
-            try (final Timer.Context ignored = streamMetrics.getExecutionTimer(rule.getId()).time()) {
+            try (final Timer.Context ignored = streamMetrics.getExecutionTimer(streamId, streamRuleId).time()) {
                 matchedStream = timeLimiter.callWithTimeout(new Callable<Stream>() {
                     @Override
                     @Nullable
                     public Stream call() throws Exception {
                         return match(message);
                     }
-                }, timeout, unit, true);
+                }, timeout, unit);
             } catch (UncheckedTimeoutException e) {
                 streamFaultManager.registerFailure(stream);
             } catch (Exception e) {
                 LOG.warn("Unexpected error during stream matching", e);
-                streamMetrics.markExceptionMeter(rule.getStreamId());
+                streamMetrics.markExceptionMeter(streamId);
             }
 
             return matchedStream;

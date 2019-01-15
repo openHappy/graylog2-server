@@ -16,7 +16,7 @@ const ApiRoutes = {
   AlertsApiController: {
     get: (alertId) => { return { url: `/streams/alerts/${alertId}` }; },
     list: (streamId, since) => { return { url: `/streams/${streamId}/alerts?since=${since}` }; },
-    listPaginated: (streamId, skip, limit) => { return { url: `/streams/${streamId}/alerts/paginated?skip=${skip}&limit=${limit}` }; },
+    listPaginated: (streamId, skip, limit, state) => { return { url: `/streams/${streamId}/alerts/paginated?skip=${skip}&limit=${limit}&state=${state}` }; },
     listAllPaginated: (skip, limit, state) => { return { url: `/streams/alerts/paginated?skip=${skip}&limit=${limit}&state=${state}` }; },
     listAllStreams: (since) => { return { url: `/streams/alerts?since=${since}` }; },
   },
@@ -24,15 +24,25 @@ const ApiRoutes = {
     available: () => { return { url: '/alerts/conditions/types' }; },
     list: () => { return { url: '/alerts/conditions' }; },
   },
-  BundlesApiController: {
-    apply: (bundleId) => { return { url: `/system/bundles/${bundleId}/apply` }; },
-    create: () => { return { url: '/system/bundles' }; },
-    delete: (bundleId) => { return { url: `/system/bundles/${bundleId}` }; },
-    export: () => { return { url: '/system/bundles/export' }; },
-    list: () => { return { url: '/system/bundles' }; },
+  CatalogsController: {
+    showEntityIndex: () => { return { url: '/system/catalog' }; },
+    queryEntities: () => { return { url: '/system/catalog' }; },
   },
   CodecTypesController: {
     list: () => { return { url: '/system/codecs/types/all' }; },
+  },
+  ContentPacksController: {
+    list: () => { return { url: '/system/content_packs/latest' }; },
+    get: (contentPackId) => { return { url: `/system/content_packs/${contentPackId}` }; },
+    getRev: (contentPackId, revision) => { return { url: `/system/content_packs/${contentPackId}/${revision}` }; },
+    downloadRev: (contentPackId, revision) => { return { url: `/system/content_packs/${contentPackId}/${revision}/download` }; },
+    create: () => { return { url: '/system/content_packs' }; },
+    delete: (contentPackId) => { return { url: `/system/content_packs/${contentPackId}` }; },
+    deleteRev: (contentPackId, revision) => { return { url: `/system/content_packs/${contentPackId}/${revision}` }; },
+    install: (contentPackId, revision) => { return { url: `/system/content_packs/${contentPackId}/${revision}/installations` }; },
+    installList: (contentPackId) => { return { url: `/system/content_packs/${contentPackId}/installations` }; },
+    uninstall: (contentPackId, installId) => { return { url: `/system/content_packs/${contentPackId}/installations/${installId}` }; },
+    uninstallDetails: (contentPackId, installId) => { return { url: `/system/content_packs/${contentPackId}/installations/${installId}/uninstall_details` }; },
   },
   CountsApiController: {
     total: () => { return { url: '/count/total' }; },
@@ -41,6 +51,10 @@ const ApiRoutes = {
   ClusterApiResource: {
     list: () => { return { url: '/system/cluster/nodes' }; },
     node: () => { return { url: '/system/cluster/node' }; },
+    elasticsearchStats: () => { return { url: '/system/cluster/stats/elasticsearch' }; },
+  },
+  GrokPatternsController: {
+    test: () => { return { url: '/system/grok/test' }; },
   },
   DashboardsApiController: {
     create: () => { return { url: '/dashboards' }; },
@@ -89,6 +103,7 @@ const ApiRoutes = {
     create: () => { return { url: '/system/indices/index_sets' }; },
     delete: (indexSetId, deleteIndices) => { return { url: `/system/indices/index_sets/${indexSetId}?delete_indices=${deleteIndices}` }; },
     setDefault: (indexSetId) => { return { url: `/system/indices/index_sets/${indexSetId}/default` }; },
+    stats: () => { return { url: '/system/indices/index_sets/stats' }; },
   },
   IndicesApiController: {
     close: (indexName) => { return { url: `/system/indexer/indices/${indexName}/close` }; },
@@ -164,8 +179,10 @@ const ApiRoutes = {
     list: (streamId) => { return { url: `/streams/${streamId}/alerts/conditions` }; },
     update: (streamId, alertConditionId) => { return { url: `/streams/${streamId}/alerts/conditions/${alertConditionId}` }; },
     sendDummyAlert: (streamId) => { return { url: `/streams/${streamId}/alerts/sendDummyAlert` }; },
+    test: (streamId, conditionId) => { return { url: `/streams/${streamId}/alerts/conditions/${conditionId}/test` }; },
   },
   StreamsApiController: {
+    index: () => { return { url: '/streams' }; },
     get: (streamId) => { return { url: `/streams/${streamId}` }; },
     create: () => { return { url: '/streams' }; },
     update: (streamId) => { return { url: `/streams/${streamId}` }; },
@@ -286,16 +303,28 @@ const ApiRoutes = {
       queryString.field = field;
       return { url: this._buildUrl(url, queryString) };
     },
-    fieldTerms(type, query, field, timerange, streamId) {
+    fieldTerms(type, query, field, order, size, stackedFields, timerange, streamId) {
       const url = `/search/universal/${type}/terms`;
       const queryString = this._buildBaseQueryString(query, timerange, streamId);
       queryString.field = field;
+      queryString.order = `${field}:${order}`; // REST API expects <field>:<order> format for the "order" param
+      queryString.size = size;
+      queryString.stacked_fields = stackedFields;
       return { url: this._buildUrl(url, queryString) };
     },
-  },
-  UsageStatsApiController: {
-    pluginEnabled: () => { return { url: '/plugins/org.graylog.plugins.usagestatistics/config' }; },
-    setOptOutState: () => { return { url: '/plugins/org.graylog.plugins.usagestatistics/opt-out' }; },
+    fieldTermsHistogram(type, query, field, order, size, stackedFields, timerange, interval, streamId) {
+      const url = `/search/universal/${type}/terms-histogram`;
+      const queryString = this._buildBaseQueryString(query, timerange, streamId);
+      // The server is using sane default interval if we don't provide one
+      if (interval && interval !== '') {
+        queryString.interval = interval.toUpperCase();
+      }
+      queryString.field = field;
+      queryString.order = `${field}:${order}`; // REST API expects <field>:<order> format for the "order" param
+      queryString.size = size;
+      queryString.stacked_fields = stackedFields;
+      return { url: this._buildUrl(url, queryString) };
+    },
   },
   UsersApiController: {
     changePassword: (username) => { return { url: `/users/${username}/password` }; },
@@ -304,6 +333,9 @@ const ApiRoutes = {
     load: (username) => { return { url: `/users/${username}` }; },
     delete: (username) => { return { url: `/users/${username}` }; },
     update: (username) => { return { url: `/users/${username}` }; },
+    create_token: (username, tokenName) => { return { url: `/users/${username}/tokens/${tokenName}` }; },
+    delete_token: (username, tokenName) => { return { url: `/users/${username}/tokens/${tokenName}` }; },
+    list_tokens: (username) => { return { url: `/users/${username}/tokens` }; },
   },
   DashboardsController: {
     show: (id) => { return { url: `/dashboards/${id}` }; },
@@ -318,6 +350,35 @@ const ApiRoutes = {
     analyze: (index, string) => { return { url: `/messages/${index}/analyze?string=${string}` }; },
     parse: () => { return { url: '/messages/parse' }; },
     single: (index, messageId) => { return { url: `/messages/${index}/${messageId}` }; },
+  },
+  MapDataController: {
+    search: () => { return { url: '/search/mapdata' }; },
+  },
+  PipelinesController: {
+    list: () => { return { url: '/system/pipelines/pipeline' }; },
+    create: () => { return { url: '/system/pipelines/pipeline' }; },
+    get: (pipelineId) => { return { url: `/system/pipelines/pipeline/${pipelineId}` }; },
+    update: (pipelineId) => { return { url: `/system/pipelines/pipeline/${pipelineId}` }; },
+    delete: (pipelineId) => { return { url: `/system/pipelines/pipeline/${pipelineId}` }; },
+    parse: () => { return { url: '/system/pipelines/pipeline/parse' }; },
+  },
+  RulesController: {
+    list: () => { return { url: '/system/pipelines/rule' }; },
+    create: () => { return { url: '/system/pipelines/rule' }; },
+    get: (ruleId) => { return { url: `/system/pipelines/rule/${ruleId}` }; },
+    update: (ruleId) => { return { url: `/system/pipelines/rule/${ruleId}` }; },
+    delete: (ruleId) => { return { url: `/system/pipelines/rule/${ruleId}` }; },
+    multiple: () => { return { url: '/system/pipelines/rule/multiple' }; },
+    functions: () => { return { url: '/system/pipelines/rule/functions' }; },
+    parse: () => { return { url: '/system/pipelines/rule/parse' }; },
+  },
+  ConnectionsController: {
+    list: () => { return { url: '/system/pipelines/connections' }; },
+    to_stream: () => { return { url: '/system/pipelines/connections/to_stream' }; },
+    to_pipeline: () => { return { url: '/system/pipelines/connections/to_pipeline' }; },
+  },
+  SimulatorController: {
+    simulate: () => { return { url: '/system/pipelines/simulate' }; },
   },
   ping: () => { return { url: '/' }; },
 };

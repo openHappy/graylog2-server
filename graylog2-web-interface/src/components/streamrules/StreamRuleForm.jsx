@@ -1,6 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Col } from 'react-bootstrap';
-import LinkedStateMixin from 'react-addons-linked-state-mixin';
 
 import { Input } from 'components/bootstrap';
 import BootstrapModalForm from 'components/bootstrap/BootstrapModalForm';
@@ -8,31 +8,32 @@ import { TypeAheadFieldInput } from 'components/common';
 import { DocumentationLink } from 'components/support';
 import DocsHelper from 'util/DocsHelper';
 import Version from 'util/Version';
+import FormsUtils from 'util/FormsUtils';
 
 import HumanReadableStreamRule from 'components/streamrules//HumanReadableStreamRule';
 
-const StreamRuleForm = React.createClass({
-  propTypes: {
-    onSubmit: React.PropTypes.func.isRequired,
-    streamRule: React.PropTypes.object,
-    streamRuleTypes: React.PropTypes.array.isRequired,
-    title: React.PropTypes.string.isRequired,
-  },
-  mixins: [LinkedStateMixin],
-  getDefaultProps() {
-    return {
-      streamRule: { field: '', type: 1, value: '', inverted: false, description: '' },
-    };
-  },
-  getInitialState() {
-    return this.props.streamRule;
-  },
-  FIELD_PRESENCE_RULE_TYPE: 5,
-  ALWAYS_MATCH_RULE_TYPE: 7,
-  _resetValues() {
+class StreamRuleForm extends React.Component {
+  static propTypes = {
+    onSubmit: PropTypes.func.isRequired,
+    streamRule: PropTypes.object,
+    streamRuleTypes: PropTypes.array.isRequired,
+    title: PropTypes.string.isRequired,
+  };
+
+  static defaultProps = {
+    streamRule: { field: '', type: 1, value: '', inverted: false, description: '' },
+  };
+
+  state = this.props.streamRule;
+  FIELD_PRESENCE_RULE_TYPE = 5;
+  ALWAYS_MATCH_RULE_TYPE = 7;
+  modal = undefined;
+
+  _resetValues = () => {
     this.setState(this.props.streamRule);
-  },
-  _onSubmit() {
+  };
+
+  _onSubmit = () => {
     if (this.state.type === this.ALWAYS_MATCH_RULE_TYPE) {
       this.state.field = '';
     }
@@ -40,43 +41,55 @@ const StreamRuleForm = React.createClass({
       this.state.value = '';
     }
     this.props.onSubmit(this.props.streamRule.id, this.state);
-    this.refs.modal.close();
-  },
-  _formatStreamRuleType(streamRuleType) {
+    this.modal.close();
+  };
+
+  _formatStreamRuleType = (streamRuleType) => {
     return (
       <option key={`streamRuleType${streamRuleType.id}`}
               value={streamRuleType.id}>{streamRuleType.short_desc}</option>
     );
-  },
-  open() {
+  };
+
+  open = () => {
     this._resetValues();
-    this.refs.modal.open();
-  },
-  close() {
-    this.refs.modal.close();
-  },
+    this.modal.open();
+  };
+
+  close = () => {
+    this.modal.close();
+  };
+
+  handleChange = (event) => {
+    const change = {};
+    change[event.target.name] = FormsUtils.getValueFromInput(event.target);
+    this.setState(change);
+  };
+
   render() {
+    const { field, type, value, inverted, description } = this.state;
+
     const streamRuleTypes = this.props.streamRuleTypes.map(this._formatStreamRuleType);
-    const fieldBox = (String(this.state.type) !== String(this.ALWAYS_MATCH_RULE_TYPE) ?
-      <TypeAheadFieldInput ref="fieldInput" type="text" required label="Field" valueLink={this.linkState('field')} autoFocus /> : '');
-    const valueBox = (String(this.state.type) !== String(this.FIELD_PRESENCE_RULE_TYPE) && String(this.state.type) !== String(this.ALWAYS_MATCH_RULE_TYPE) ?
-      <Input id="Value" type="text" required label="Value" name="Value" valueLink={this.linkState('value')} /> : '');
+    const fieldBox = (String(type) !== String(this.ALWAYS_MATCH_RULE_TYPE) ?
+      <TypeAheadFieldInput id="field-input" type="text" required label="Field" name="field" defaultValue={field} onChange={this.handleChange} autoFocus /> : '');
+    const valueBox = (String(type) !== String(this.FIELD_PRESENCE_RULE_TYPE) && String(type) !== String(this.ALWAYS_MATCH_RULE_TYPE) ?
+      <Input id="Value" type="text" required label="Value" name="value" value={value} onChange={this.handleChange} /> : '');
     return (
-      <BootstrapModalForm ref="modal"
+      <BootstrapModalForm ref={(c) => { this.modal = c; }}
                           title={this.props.title}
                           onSubmitForm={this._onSubmit}
                           submitButtonText="Save"
-                          formProps={{id: 'StreamRuleForm'}}>
+                          formProps={{ id: 'StreamRuleForm' }}>
         <div>
           <Col md={8}>
             {fieldBox}
-            <Input id="Type" type="select" required label="Type" name="Type" valueLink={this.linkState('type')}>
+            <Input id="Type" type="select" required label="Type" name="type" value={type} onChange={this.handleChange}>
               {streamRuleTypes}
             </Input>
             {valueBox}
-            <Input id="Inverted" type="checkbox" label="Inverted" name="Inverted" checkedLink={this.linkState('inverted')} />
+            <Input id="Inverted" type="checkbox" label="Inverted" name="inverted" checked={inverted} onChange={this.handleChange} />
 
-            <Input id="Description" type="textarea" label="Description (optional)" name="Description" valueLink={this.linkState('description')} />
+            <Input id="Description" type="textarea" label="Description (optional)" name="description" value={description} onChange={this.handleChange} />
 
             <p>
               <strong>Result:</strong>
@@ -103,7 +116,7 @@ const StreamRuleForm = React.createClass({
         </div>
       </BootstrapModalForm>
     );
-  },
-});
+  }
+}
 
 export default StreamRuleForm;

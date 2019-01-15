@@ -1,9 +1,10 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
-const MessageCountRotationStrategySummary = React.createClass({
-  propTypes: {
-    config: React.PropTypes.object.isRequired,
-  },
+class MessageCountRotationStrategySummary extends React.Component {
+  static propTypes = {
+    config: PropTypes.object.isRequired,
+  };
 
   render() {
     return (
@@ -16,7 +17,7 @@ const MessageCountRotationStrategySummary = React.createClass({
         </dl>
       </div>
     );
-  },
-});
+  }
+}
 
 export default MessageCountRotationStrategySummary;

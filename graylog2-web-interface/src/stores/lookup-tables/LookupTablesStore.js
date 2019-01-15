@@ -147,7 +147,7 @@ const LookupTablesStore = Reflux.createStore({
   },
 
   lookup(tableName, key) {
-    const promise = fetch('GET', this._url(`tables/${tableName}/query?key=${key}`));
+    const promise = fetch('GET', this._url(`tables/${tableName}/query?key=${encodeURIComponent(key)}`));
 
     promise.then((response) => {
       this.trigger({
@@ -156,6 +156,28 @@ const LookupTablesStore = Reflux.createStore({
     }, this._errorHandler('Lookup failed', `Could not lookup value for key "${key}" in lookup table "${tableName}"`));
 
     LookupTablesActions.lookup.promise(promise);
+    return promise;
+  },
+
+  purgeKey(table, key) {
+    const promise = fetch('POST', this._url(`tables/${table.id}/purge?key=${encodeURIComponent(key)}`));
+
+    promise.then(() => {
+      UserNotification.success(`Purging cache key "${key}" for lookup table "${table.name}"`, 'Success!');
+    }, this._errorHandler(`Could not purge cache for key "${key}" in lookup table "${table.name}"`, 'Failed!'));
+
+    LookupTablesActions.purgeKey.promise(promise);
+    return promise;
+  },
+
+  purgeAll(table) {
+    const promise = fetch('POST', this._url(`tables/${table.id}/purge`));
+
+    promise.then(() => {
+      UserNotification.success(`Purging cache for lookup table "${table.name}"`, 'Success!');
+    }, this._errorHandler(`Could not purge cache for lookup table "${table.name}"`, 'Failed!'));
+
+    LookupTablesActions.purgeAll.promise(promise);
     return promise;
   },
 

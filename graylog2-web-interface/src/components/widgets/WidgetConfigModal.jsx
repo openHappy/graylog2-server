@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Button, Modal } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
 import { PluginStore } from 'graylog-web-plugin/plugin';
@@ -8,20 +9,22 @@ import StringUtils from 'util/StringUtils';
 
 import BootstrapModalWrapper from 'components/bootstrap/BootstrapModalWrapper';
 
-const WidgetConfigModal = React.createClass({
-  propTypes: {
+class WidgetConfigModal extends React.Component {
+  static propTypes = {
     boundToStream: PropTypes.bool.isRequired,
     widget: PropTypes.object.isRequired,
     dashboardId: PropTypes.string.isRequired,
-  },
+  };
 
-  open() {
-    this.refs.configModal.open();
-  },
-  hide() {
-    this.refs.configModal.close();
-  },
-  _getBasicConfiguration() {
+  open = () => {
+    this.configModal.open();
+  };
+
+  hide = () => {
+    this.configModal.close();
+  };
+
+  _getBasicConfiguration = () => {
     let basicConfigurationMessage;
     const widgetPlugin = PluginStore.exports('widgets').filter(widget => widget.type.toUpperCase() === this.props.widget.type.toUpperCase())[0];
     const widgetType = (widgetPlugin ? widgetPlugin.displayName : 'Not available');
@@ -42,11 +45,13 @@ const WidgetConfigModal = React.createClass({
     }
 
     return basicConfigurationMessage;
-  },
-  _formatConfigurationKey(key) {
+  };
+
+  _formatConfigurationKey = (key) => {
     return StringUtils.capitalizeFirstLetter(key.replace(/_/g, ' '));
-  },
-  _formatConfigurationValue(key, value) {
+  };
+
+  _formatConfigurationValue = (key, value) => {
     if (key === 'query' && value === '') {
       return '*';
     }
@@ -60,8 +65,9 @@ const WidgetConfigModal = React.createClass({
     }
 
     return value;
-  },
-  _getConfigAsDescriptionList() {
+  };
+
+  _getConfigAsDescriptionList = () => {
     const configKeys = Object.keys(this.props.widget.config);
     if (configKeys.length === 0) {
       return [];
@@ -78,10 +84,11 @@ const WidgetConfigModal = React.createClass({
     });
 
     return configListElements;
-  },
+  };
+
   render() {
     return (
-      <BootstrapModalWrapper ref="configModal">
+      <BootstrapModalWrapper ref={(configModal) => { this.configModal = configModal; }}>
         <Modal.Header closeButton>
           <Modal.Title><span>Widget <em>{this.props.widget.description}</em> configuration</span></Modal.Title>
         </Modal.Header>
@@ -107,7 +114,7 @@ const WidgetConfigModal = React.createClass({
         </Modal.Footer>
       </BootstrapModalWrapper>
     );
-  },
-});
+  }
+}
 
 export default WidgetConfigModal;

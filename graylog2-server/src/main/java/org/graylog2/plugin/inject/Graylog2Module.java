@@ -16,6 +16,7 @@
  */
 package org.graylog2.plugin.inject;
 
+import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.google.common.util.concurrent.Service;
 import com.google.inject.AbstractModule;
 import com.google.inject.Key;
@@ -25,12 +26,15 @@ import com.google.inject.multibindings.MapBinder;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.OptionalBinder;
 import com.google.inject.name.Names;
-
 import org.apache.shiro.realm.AuthenticatingRealm;
 import org.graylog2.audit.AuditEventSender;
 import org.graylog2.audit.AuditEventType;
 import org.graylog2.audit.PluginAuditEventTypes;
 import org.graylog2.audit.formatter.AuditEventFormatter;
+import org.graylog2.contentpacks.constraints.ConstraintChecker;
+import org.graylog2.contentpacks.facades.EntityFacade;
+import org.graylog2.contentpacks.model.ModelType;
+import org.graylog2.migrations.Migration;
 import org.graylog2.plugin.alarms.AlertCondition;
 import org.graylog2.plugin.dashboards.widgets.WidgetStrategy;
 import org.graylog2.plugin.decorators.SearchResponseDecorator;
@@ -51,13 +55,12 @@ import org.graylog2.plugin.security.PluginPermissions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.annotation.Annotation;
-
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.container.DynamicFeature;
 import javax.ws.rs.ext.ExceptionMapper;
+import java.lang.annotation.Annotation;
 
 public abstract class Graylog2Module extends AbstractModule {
     private static final Logger LOG = LoggerFactory.getLogger(Graylog2Module.class);
@@ -390,7 +393,7 @@ public abstract class Graylog2Module extends AbstractModule {
                                       Class<? extends LookupCacheConfiguration> configClass) {
         install(new FactoryModuleBuilder().implement(LookupCache.class, cacheClass).build(factoryClass));
         lookupCacheBinder().addBinding(name).to(factoryClass);
-        jacksonSubTypesBinder().addBinding(name).toInstance(configClass);
+        registerJacksonSubtype(configClass, name);
     }
 
 
@@ -404,11 +407,43 @@ public abstract class Graylog2Module extends AbstractModule {
                                             Class<? extends LookupDataAdapterConfiguration> configClass) {
         install(new FactoryModuleBuilder().implement(LookupDataAdapter.class, adapterClass).build(factoryClass));
         lookupDataAdapterBinder().addBinding(name).to(factoryClass);
-        jacksonSubTypesBinder().addBinding(name).toInstance(configClass);
+        registerJacksonSubtype(configClass, name);
     }
 
-    protected MapBinder<String, Object> jacksonSubTypesBinder() {
-        return MapBinder.newMapBinder(binder(), TypeLiteral.get(String.class), TypeLiteral.get(Object.class), JacksonSubTypes.class);
+    /**
+     * Prefer using {@link #registerJacksonSubtype(Class)} or {@link #registerJacksonSubtype(Class, String)}.
+     */
+    protected Multibinder<NamedType> jacksonSubTypesBinder() {
+        return Multibinder.newSetBinder(binder(), NamedType.class, JacksonSubTypes.class);
+    }
+
+    /**
+     * Use this if the class itself is annotated by {@link com.fasterxml.jackson.annotation.JsonTypeName} instead of explicitly given.
+     * @param klass
+     */
+    protected void registerJacksonSubtype(Class<?> klass) {
+        registerJacksonSubtype(klass, null);
+    }
+
+    /**
+     * Use this if the class does not have a {@link com.fasterxml.jackson.annotation.JsonTypeName} annotation.
+     * @param klass
+     * @param name
+     */
+    protected void registerJacksonSubtype(Class<?> klass, String name) {
+        jacksonSubTypesBinder().addBinding().toInstance(new NamedType(klass, name));
+    }
+
+    protected Multibinder<Migration> migrationsBinder() {
+        return Multibinder.newSetBinder(binder(), Migration.class);
+    }
+
+    protected MapBinder<ModelType, EntityFacade<?>> entityFacadeBinder() {
+        return MapBinder.newMapBinder(binder(), new TypeLiteral<ModelType>() {}, new TypeLiteral<EntityFacade<?>>() {});
+    }
+
+    protected Multibinder<ConstraintChecker> constraintCheckerBinder() {
+        return Multibinder.newSetBinder(binder(), ConstraintChecker.class);
     }
 
     private static class DynamicFeatureType extends TypeLiteral<Class<? extends DynamicFeature>> {}
@@ -416,4 +451,9 @@ public abstract class Graylog2Module extends AbstractModule {
     private static class ContainerResponseFilterType extends TypeLiteral<Class<? extends ContainerResponseFilter>> {}
 
     private static class ExceptionMapperType extends TypeLiteral<Class<? extends ExceptionMapper>> {}
+
+    protected void registerRestControllerPackage(String packageName) {
+        final Multibinder<RestControllerPackage> restControllerPackages = Multibinder.newSetBinder(binder(), RestControllerPackage.class);
+        restControllerPackages.addBinding().toInstance(RestControllerPackage.create(packageName));
+    }
 }

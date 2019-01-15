@@ -1,5 +1,7 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import Immutable from 'immutable';
+import ImmutablePropTypes from 'react-immutable-proptypes';
 import { Col, Row } from 'react-bootstrap';
 
 import { LoadingIndicator } from 'components/common';
@@ -11,49 +13,40 @@ const SearchStore = StoreProvider.getStore('Search');
 import { PluginStore } from 'graylog-web-plugin/plugin';
 import {} from 'components/field-analyzers'; // Make sure to load all field analyzer plugins!
 
-const SearchResult = React.createClass({
-  propTypes: {
-    query: React.PropTypes.string,
-    builtQuery: React.PropTypes.string,
-    result: React.PropTypes.object.isRequired,
-    histogram: React.PropTypes.object.isRequired,
-    formattedHistogram: React.PropTypes.array,
-    searchInStream: React.PropTypes.object,
-    streams: React.PropTypes.instanceOf(Immutable.Map),
-    inputs: React.PropTypes.instanceOf(Immutable.Map),
-    nodes: React.PropTypes.instanceOf(Immutable.Map),
-    permissions: React.PropTypes.array.isRequired,
-    searchConfig: React.PropTypes.object.isRequired,
-    loadingSearch: React.PropTypes.bool,
-    forceFetch: React.PropTypes.bool,
-  },
+class SearchResult extends React.Component {
+  static propTypes = {
+    query: PropTypes.string,
+    builtQuery: PropTypes.string,
+    result: PropTypes.object.isRequired,
+    histogram: PropTypes.object.isRequired,
+    formattedHistogram: PropTypes.array,
+    searchInStream: PropTypes.object,
+    streams: ImmutablePropTypes.map,
+    inputs: ImmutablePropTypes.map,
+    nodes: ImmutablePropTypes.map,
+    permissions: PropTypes.array.isRequired,
+    searchConfig: PropTypes.object.isRequired,
+    loadingSearch: PropTypes.bool,
+    forceFetch: PropTypes.bool,
+  };
 
-  getDefaultProps() {
-    return {
-      query: '*',
-      builtQuery: '',
-      formattedHistogram: [],
-      searchInStream: null,
-      streams: Immutable.Map({}),
-      inputs: Immutable.Map({}),
-      nodes: Immutable.Map({}),
-    };
-  },
-
-  getInitialState() {
-    return {
-      selectedFields: this.sortFields(SearchStore.fields),
-      showAllFields: false,
-      shouldHighlight: true,
-      savedSearch: SearchStore.savedSearch,
-    };
-  },
+  static defaultProps = {
+    query: '*',
+    builtQuery: '',
+    formattedHistogram: [],
+    searchInStream: null,
+    streams: Immutable.Map({}),
+    inputs: Immutable.Map({}),
+    nodes: Immutable.Map({}),
+  };
 
   componentDidUpdate() {
     this._resetSelectedFields();
-  },
+  }
 
-  onFieldToggled(fieldName) {
+  fieldAnalyzers = {};
+
+  onFieldToggled = (fieldName) => {
     const currentFields = this.state.selectedFields;
     let newFieldSet;
     if (currentFields.contains(fieldName)) {
@@ -62,23 +55,23 @@ const SearchResult = React.createClass({
       newFieldSet = currentFields.add(fieldName);
     }
     this.updateSelectedFields(newFieldSet);
-  },
+  };
 
   // Reset selected fields if saved search changed
-  _resetSelectedFields() {
+  _resetSelectedFields = () => {
     if (this.state.savedSearch !== SearchStore.savedSearch) {
       this.setState({
         savedSearch: SearchStore.savedSearch,
         selectedFields: this.sortFields(SearchStore.fields),
       });
     }
-  },
+  };
 
-  togglePageFields() {
+  togglePageFields = () => {
     this.setState({ showAllFields: !this.state.showAllFields });
-  },
+  };
 
-  predefinedFieldSelection(setName) {
+  predefinedFieldSelection = (setName) => {
     if (setName === 'none') {
       this.updateSelectedFields(Immutable.Set());
     } else if (setName === 'all') {
@@ -86,18 +79,19 @@ const SearchResult = React.createClass({
     } else if (setName === 'default') {
       this.updateSelectedFields(Immutable.Set(['message', 'source']));
     }
-  },
+  };
 
-  updateSelectedFields(fieldSelection) {
+  updateSelectedFields = (fieldSelection) => {
     const selectedFields = this.sortFields(fieldSelection);
     SearchStore.fields = selectedFields;
     this.setState({ selectedFields: selectedFields });
-  },
-  _fields() {
-    return this.props.result[this.state.showAllFields ? 'all_fields' : 'fields'];
-  },
+  };
 
-  sortFields(fieldSet) {
+  _fields = () => {
+    return this.props.result[this.state.showAllFields ? 'all_fields' : 'fields'];
+  };
+
+  sortFields = (fieldSet) => {
     let newFieldSet = fieldSet;
     let sortedFields = Immutable.OrderedSet();
 
@@ -107,18 +101,18 @@ const SearchResult = React.createClass({
     newFieldSet = newFieldSet.delete('source');
     const remainingFieldsSorted = newFieldSet.sort((field1, field2) => field1.toLowerCase().localeCompare(field2.toLowerCase()));
     return sortedFields.concat(remainingFieldsSorted);
-  },
+  };
 
-  addFieldAnalyzer(ref, field) {
-    this.refs[ref].addField(field);
-  },
+  addFieldAnalyzer = (ref, field) => {
+    this.fieldAnalyzers[ref].addField(field);
+  };
 
-  _fieldAnalyzers(filter) {
+  _fieldAnalyzers = (filter) => {
     return PluginStore.exports('fieldAnalyzers')
       .filter(analyzer => filter !== undefined ? filter(analyzer) : true);
-  },
+  };
 
-  _fieldAnalyzerComponents(filter) {
+  _fieldAnalyzerComponents = (filter) => {
     // Get params used in the last executed search.
     const searchParams = SearchStore.getOriginalSearchURLParams().toJS();
     const rangeParams = {};
@@ -128,11 +122,13 @@ const SearchResult = React.createClass({
       }
     });
 
+    const fieldAnalyzers = this.fieldAnalyzers;
+
     return this._fieldAnalyzers(filter)
       .map((analyzer, idx) => {
         return React.createElement(analyzer.component, {
           key: idx,
-          ref: analyzer.refId,
+          ref: (elem) => { fieldAnalyzers[analyzer.refId] = elem; },
           permissions: this.props.permissions,
           query: searchParams.q,
           page: searchParams.page,
@@ -143,21 +139,29 @@ const SearchResult = React.createClass({
           from: this.props.histogram.histogram_boundaries.from,
           to: this.props.histogram.histogram_boundaries.to,
           forceFetch: this.props.forceFetch,
+          fields: this.props.result.all_fields,
         });
       });
-  },
+  };
 
-  _shouldRenderAboveHistogram(analyzer) {
+  _shouldRenderAboveHistogram = (analyzer) => {
     return analyzer.displayPriority > 0;
-  },
+  };
 
-  _shouldRenderBelowHistogram(analyzer) {
+  _shouldRenderBelowHistogram = (analyzer) => {
     return analyzer.displayPriority <= 0;
-  },
+  };
 
-  _toggleShouldHighlight() {
+  _toggleShouldHighlight = () => {
     this.setState({ shouldHighlight: !this.state.shouldHighlight });
-  },
+  };
+
+  state = {
+    selectedFields: this.sortFields(SearchStore.fields),
+    showAllFields: false,
+    shouldHighlight: true,
+    savedSearch: SearchStore.savedSearch,
+  };
 
   render() {
     const anyHighlightRanges = Immutable.fromJS(this.props.result.messages).some(message => message.get('highlight_ranges') !== null);
@@ -180,7 +184,7 @@ const SearchResult = React.createClass({
 
     return (
       <Row id="main-content-search">
-        <Col ref="opa" md={3} sm={12} id="sidebar">
+        <Col md={3} sm={12} id="sidebar">
           <SearchSidebar result={this.props.result}
                          builtQuery={this.props.builtQuery}
                          selectedFields={this.state.selectedFields}
@@ -198,6 +202,7 @@ const SearchResult = React.createClass({
                          searchInStream={this.props.searchInStream}
                          permissions={this.props.permissions}
                          loadingSearch={this.props.loadingSearch}
+                         searchConfig={this.props.searchConfig}
           />
         </Col>
         <Col md={9} sm={12} id="main-content-sidebar">
@@ -226,7 +231,7 @@ const SearchResult = React.createClass({
         </Col>
       </Row>
     );
-  },
-});
+  }
+}
 
 export default SearchResult;

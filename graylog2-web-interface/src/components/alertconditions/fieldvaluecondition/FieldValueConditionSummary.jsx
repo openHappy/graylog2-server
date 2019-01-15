@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
 import GracePeriodSummary from 'components/alertconditions/GracePeriodSummary';
@@ -5,10 +6,11 @@ import BacklogSummary from 'components/alertconditions/BacklogSummary';
 import RepeatNotificationsSummary from 'components/alertconditions/RepeatNotificationsSummary';
 import { Pluralize } from 'components/common';
 
-const FieldValueConditionSummary = React.createClass({
-  propTypes: {
-    alertCondition: React.PropTypes.object.isRequired,
-  },
+class FieldValueConditionSummary extends React.Component {
+  static propTypes = {
+    alertCondition: PropTypes.object.isRequired,
+  };
+
   render() {
     const alertCondition = this.props.alertCondition;
     const field = alertCondition.parameters.field;
@@ -31,7 +33,7 @@ const FieldValueConditionSummary = React.createClass({
         <RepeatNotificationsSummary alertCondition={alertCondition} />
       </span>
     );
-  },
-});
+  }
+}
 
 export default FieldValueConditionSummary;

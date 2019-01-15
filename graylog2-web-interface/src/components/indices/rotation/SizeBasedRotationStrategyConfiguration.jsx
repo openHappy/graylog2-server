@@ -1,22 +1,21 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Input } from 'components/bootstrap';
 
 import NumberUtils from 'util/NumberUtils';
 
-const SizeBasedRotationStrategyConfiguration = React.createClass({
-  propTypes: {
-    config: React.PropTypes.object.isRequired,
-    jsonSchema: React.PropTypes.object.isRequired,
-    updateConfig: React.PropTypes.func.isRequired,
-  },
+class SizeBasedRotationStrategyConfiguration extends React.Component {
+  static propTypes = {
+    config: PropTypes.object.isRequired,
+    jsonSchema: PropTypes.object.isRequired,
+    updateConfig: PropTypes.func.isRequired,
+  };
 
-  getInitialState() {
-    return {
-      max_size: this.props.config.max_size,
-    };
-  },
+  state = {
+    max_size: this.props.config.max_size,
+  };
 
-  _onInputUpdate(field) {
+  _onInputUpdate = (field) => {
     return (e) => {
       const update = {};
       update[field] = e.target.value;
@@ -24,11 +23,11 @@ const SizeBasedRotationStrategyConfiguration = React.createClass({
       this.setState(update);
       this.props.updateConfig(update);
     };
-  },
+  };
 
-  _formatSize() {
+  _formatSize = () => {
     return NumberUtils.formatBytes(this.state.max_size);
-  },
+  };
 
   render() {
     return (
@@ -45,7 +44,7 @@ const SizeBasedRotationStrategyConfiguration = React.createClass({
         </fieldset>
       </div>
     );
-  },
-});
+  }
+}
 
 export default SizeBasedRotationStrategyConfiguration;

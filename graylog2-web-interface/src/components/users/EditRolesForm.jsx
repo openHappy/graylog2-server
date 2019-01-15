@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Alert, Col, Button, Row } from 'react-bootstrap';
 import Routes from 'routing/Routes';
@@ -5,6 +6,7 @@ import Routes from 'routing/Routes';
 import { Input } from 'components/bootstrap';
 import UserNotification from 'util/UserNotification';
 import ObjectUtils from 'util/ObjectUtils';
+import history from 'util/History';
 
 import StoreProvider from 'injection/StoreProvider';
 const RolesStore = StoreProvider.getStore('Roles');
@@ -15,42 +17,45 @@ import { Spinner } from 'components/common';
 
 import EditRolesFormStyle from '!style!css!./EditRolesForm.css';
 
-const EditRolesForm = React.createClass({
-  propTypes: {
-    user: React.PropTypes.object.isRequired,
-    history: React.PropTypes.object,
-  },
-  getInitialState() {
-    return {
-      newRoles: null,
-    };
-  },
+class EditRolesForm extends React.Component {
+  static propTypes = {
+    user: PropTypes.object.isRequired,
+  };
+
+  state = {
+    newRoles: null,
+  };
+
   componentDidMount() {
     RolesStore.loadRoles().then((roles) => {
       this.setState({ roles: roles.sort((r1, r2) => r1.name.localeCompare(r2.name)) });
     });
-  },
-  _updateRoles(evt) {
+  }
+
+  _updateRoles = (evt) => {
     evt.preventDefault();
     if (confirm(`Really update roles for "${this.props.user.username}"?`)) {
-      const roles = this.refs.roles.getValue().filter(value => value !== '');
+      const roles = this.roles.getValue().filter(value => value !== '');
       const user = ObjectUtils.clone(this.props.user);
       user.roles = roles;
       UsersStore.update(this.props.user.username, user).then(() => {
         UserNotification.success('Roles updated successfully.', 'Success!');
-        this.props.history.replaceState(null, Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
+        history.replace(Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
       }, () => {
         UserNotification.error('Updating roles failed.', 'Error!');
       });
     }
-  },
-  _onCancel() {
-    this.props.history.pushState(null, Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
-  },
-  _onValueChange(newRoles) {
+  };
+
+  _onCancel = () => {
+    history.push(Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
+  };
+
+  _onValueChange = (newRoles) => {
     const roles = newRoles.split(',');
     this.setState({ newRoles: roles });
-  },
+  };
+
   render() {
     const user = this.props.user;
     if (!this.state.roles) {
@@ -82,9 +87,12 @@ const EditRolesForm = React.createClass({
       <span>
         {externalUser}
         <form className="form-horizontal" style={{ marginTop: '10px' }} onSubmit={this._updateRoles}>
-          <Input label="Roles" help="Choose the roles the user should be a member of. All the granted permissions will be combined."
-                 labelClassName="col-sm-3" wrapperClassName="col-sm-9">
-            <RolesSelect ref="roles" userRoles={user.roles} availableRoles={this.state.roles} onValueChange={this._onValueChange} />
+          <Input id="roles-select"
+                 label="Roles"
+                 help="Choose the roles the user should be a member of. All the granted permissions will be combined."
+                 labelClassName="col-sm-3"
+                 wrapperClassName="col-sm-9">
+            <RolesSelect ref={(roles) => { this.roles = roles; }} userRoles={user.roles} availableRoles={this.state.roles} onValueChange={this._onValueChange} />
           </Input>
           <div className="form-group">
             <Col smOffset={3} sm={9}>
@@ -106,7 +114,7 @@ const EditRolesForm = React.createClass({
         </Col>
       </Row>
     );
-  },
-});
+  }
+}
 
 export default EditRolesForm;

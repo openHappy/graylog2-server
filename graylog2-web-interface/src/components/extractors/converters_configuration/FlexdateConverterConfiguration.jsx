@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Row, Col } from 'react-bootstrap';
 
 import { Input } from 'components/bootstrap';
@@ -8,34 +9,39 @@ import DocumentationLink from 'components/support/DocumentationLink';
 import DocsHelper from 'util/DocsHelper';
 import FormUtils from 'util/FormsUtils';
 
-const FlexdateConverterConfiguration = React.createClass({
-  propTypes: {
+class FlexdateConverterConfiguration extends React.Component {
+  static propTypes = {
     type: PropTypes.string.isRequired,
     configuration: PropTypes.object.isRequired,
     onChange: PropTypes.func.isRequired,
-  },
+  };
+
   componentDidMount() {
     this.props.onChange(this.props.type, this._getConverterObject());
-  },
-  _getConverterObject(configuration) {
+  }
+
+  _getConverterObject = (configuration) => {
     return { type: this.props.type, config: configuration || this.props.configuration };
-  },
-  _toggleConverter(event) {
+  };
+
+  _toggleConverter = (event) => {
     let converter;
     if (FormUtils.getValueFromInput(event.target) === true) {
       converter = this._getConverterObject();
     }
 
     this.props.onChange(this.props.type, converter);
-  },
-  _onChange(key) {
+  };
+
+  _onChange = (key) => {
     return (data) => {
       const newConfig = this.props.configuration;
       // data can be an event or a value, we need to check its type :sick:
       newConfig[key] = typeof data === 'object' ? FormUtils.getValueFromInput(data.target) : data;
       this.props.onChange(this.props.type, this._getConverterObject(newConfig));
     };
-  },
+  };
+
   render() {
     const timezoneHelpMessage = (
       <span>
@@ -60,8 +66,7 @@ const FlexdateConverterConfiguration = React.createClass({
                      labelClassName="col-sm-3"
                      wrapperClassName="col-sm-9"
                      help={timezoneHelpMessage}>
-                <TimezoneSelect ref="timezone"
-                                id={`${this.props.type}_converter_timezone`}
+                <TimezoneSelect id={`${this.props.type}_converter_timezone`}
                                 className="timezone-select"
                                 value={this.props.configuration.time_zone}
                                 onChange={this._onChange('time_zone')} />
@@ -71,7 +76,7 @@ const FlexdateConverterConfiguration = React.createClass({
         </Row>
       </div>
     );
-  },
-});
+  }
+}
 
 export default FlexdateConverterConfiguration;

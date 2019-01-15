@@ -1,5 +1,6 @@
-import React, { PropTypes } from 'react';
-import { Button } from 'react-bootstrap';
+import PropTypes from 'prop-types';
+import React from 'react';
+import { Button, Col, Row } from 'react-bootstrap';
 
 import { Input } from 'components/bootstrap';
 import DocumentationLink from 'components/support/DocumentationLink';
@@ -11,27 +12,28 @@ import FormUtils from 'util/FormsUtils';
 import StoreProvider from 'injection/StoreProvider';
 const ToolsStore = StoreProvider.getStore('Tools');
 
-const RegexReplaceExtractorConfiguration = React.createClass({
-  propTypes: {
+class RegexReplaceExtractorConfiguration extends React.Component {
+  static propTypes = {
     configuration: PropTypes.object.isRequired,
     exampleMessage: PropTypes.string,
     onChange: PropTypes.func.isRequired,
     onExtractorPreviewLoad: PropTypes.func.isRequired,
-  },
-  getInitialState() {
-    return {
-      trying: false,
-    };
-  },
-  _onChange(key) {
+  };
+
+  state = {
+    trying: false,
+  };
+
+  _onChange = (key) => {
     return (event) => {
       this.props.onExtractorPreviewLoad(undefined);
       const newConfig = this.props.configuration;
       newConfig[key] = FormUtils.getValueFromInput(event.target);
       this.props.onChange(newConfig);
     };
-  },
-  _onTryClick() {
+  };
+
+  _onTryClick = () => {
     this.setState({ trying: true });
 
     const configuration = this.props.configuration;
@@ -53,10 +55,12 @@ const RegexReplaceExtractorConfiguration = React.createClass({
     });
 
     promise.finally(() => this.setState({ trying: false }));
-  },
-  _isTryButtonDisabled() {
+  };
+
+  _isTryButtonDisabled = () => {
     return this.state.trying || !this.props.configuration.regex || !this.props.configuration.replacement || !this.props.exampleMessage;
-  },
+  };
+
   render() {
     const regexHelpMessage = (
       <span>
@@ -105,14 +109,16 @@ const RegexReplaceExtractorConfiguration = React.createClass({
                onChange={this._onChange('replace_all')}
                help="Whether to replace all occurrences of the given pattern or only the first occurrence." />
 
-        <Input wrapperClassName="col-md-offset-2 col-md-10">
-          <Button bsStyle="info" onClick={this._onTryClick} disabled={this._isTryButtonDisabled()}>
-            {this.state.trying ? <i className="fa fa-spin fa-spinner" /> : 'Try'}
-          </Button>
-        </Input>
+        <Row>
+          <Col mdOffset={2} md={10}>
+            <Button bsStyle="info" onClick={this._onTryClick} disabled={this._isTryButtonDisabled()}>
+              {this.state.trying ? <i className="fa fa-spin fa-spinner" /> : 'Try'}
+            </Button>
+          </Col>
+        </Row>
       </div>
     );
-  },
-});
+  }
+}
 
 export default RegexReplaceExtractorConfiguration;

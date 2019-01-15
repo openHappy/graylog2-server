@@ -1,18 +1,25 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+
+import createReactClass from 'create-react-class';
 
 import { MetricDetails } from 'components/metrics';
 
-const Metric = React.createClass({
+const Metric = createReactClass({
+  displayName: 'Metric',
+
   propTypes: {
-    metric: React.PropTypes.object.isRequired,
-    namespace: React.PropTypes.string,
-    nodeId: React.PropTypes.string.isRequired,
+    metric: PropTypes.object.isRequired,
+    namespace: PropTypes.string,
+    nodeId: PropTypes.string.isRequired,
   },
+
   getInitialState() {
     return {
       expanded: false,
     };
   },
+
   iconMapping: {
     timer: 'clock-o',
     histogram: 'signal',
@@ -21,6 +28,7 @@ const Metric = React.createClass({
     counter: 'circle',
     unknown: 'question-circle',
   },
+
   _formatIcon(type) {
     const icon = this.iconMapping[type];
     if (icon) {
@@ -29,6 +37,7 @@ const Metric = React.createClass({
 
     return this.iconMapping.unknown;
   },
+
   _formatName(metricName) {
     const namespace = this.props.namespace;
     const split = metricName.split(namespace);
@@ -40,10 +49,12 @@ const Metric = React.createClass({
       </span>
     );
   },
+
   _showDetails(event) {
     event.preventDefault();
     this.setState({ expanded: !this.state.expanded });
   },
+
   render() {
     const metric = this.props.metric;
     const details = this.state.expanded ? <MetricDetails nodeId={this.props.nodeId} metric={this.props.metric} /> : null;

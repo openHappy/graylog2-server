@@ -1,5 +1,7 @@
-import React, { PropTypes } from 'react';
-import { Button } from 'react-bootstrap';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
+import { Button, Col, Row } from 'react-bootstrap';
 
 import { Input } from 'components/bootstrap';
 import StoreProvider from 'injection/StoreProvider';
@@ -8,25 +10,31 @@ const ToolsStore = StoreProvider.getStore('Tools');
 import ExtractorUtils from 'util/ExtractorUtils';
 import FormUtils from 'util/FormsUtils';
 
-const JSONExtractorConfiguration = React.createClass({
+const JSONExtractorConfiguration = createReactClass({
+  displayName: 'JSONExtractorConfiguration',
+
   propTypes: {
     configuration: PropTypes.object.isRequired,
     exampleMessage: PropTypes.string,
     onChange: PropTypes.func.isRequired,
     onExtractorPreviewLoad: PropTypes.func.isRequired,
   },
+
   getInitialState() {
     return {
       trying: false,
       configuration: this._getEffectiveConfiguration(this.props.configuration),
     };
   },
+
   componentDidMount() {
     this.props.onChange(this.state.configuration);
   },
+
   componentWillReceiveProps(nextProps) {
     this.setState({ configuration: this._getEffectiveConfiguration(nextProps.configuration) });
   },
+
   DEFAULT_CONFIGURATION: {
     list_separator: ', ',
     key_separator: '_',
@@ -35,9 +43,11 @@ const JSONExtractorConfiguration = React.createClass({
     replace_key_whitespace: false,
     key_whitespace_replacement: '_',
   },
+
   _getEffectiveConfiguration(configuration) {
     return ExtractorUtils.getEffectiveConfiguration(this.DEFAULT_CONFIGURATION, configuration);
   },
+
   _onChange(key) {
     return (event) => {
       this.props.onExtractorPreviewLoad(undefined);
@@ -46,6 +56,7 @@ const JSONExtractorConfiguration = React.createClass({
       this.props.onChange(newConfig);
     };
   },
+
   _onTryClick() {
     this.setState({ trying: true });
 
@@ -69,9 +80,11 @@ const JSONExtractorConfiguration = React.createClass({
 
     promise.finally(() => this.setState({ trying: false }));
   },
+
   _isTryButtonDisabled() {
     return this.state.trying || !this.props.exampleMessage;
   },
+
   render() {
     return (
       <div>
@@ -141,11 +154,13 @@ const JSONExtractorConfiguration = React.createClass({
                onChange={this._onChange('key_whitespace_replacement')}
                help="What character to use when replacing whitespaces in message keys. Please ensure the replacement character is valid in Lucene, e.g. '-' or '_'." />
 
-        <Input wrapperClassName="col-md-offset-2 col-md-10">
-          <Button bsStyle="info" onClick={this._onTryClick} disabled={this._isTryButtonDisabled()}>
-            {this.state.trying ? <i className="fa fa-spin fa-spinner" /> : 'Try'}
-          </Button>
-        </Input>
+        <Row>
+          <Col mdOffset={2} md={10}>
+            <Button bsStyle="info" onClick={this._onTryClick} disabled={this._isTryButtonDisabled()}>
+              {this.state.trying ? <i className="fa fa-spin fa-spinner" /> : 'Try'}
+            </Button>
+          </Col>
+        </Row>
       </div>
     );
   },

@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Button, Row, Col, Table, Popover, OverlayTrigger } from 'react-bootstrap';
 import Routes from 'routing/Routes';
 
@@ -13,30 +14,29 @@ import Styles from './Overview.css';
 
 const { LookupTableDataAdaptersActions } = CombinedProvider.get('LookupTableDataAdapters');
 
-const DataAdaptersOverview = React.createClass({
-
-  propTypes: {
+class DataAdaptersOverview extends React.Component {
+  static propTypes = {
     dataAdapters: PropTypes.array.isRequired,
     pagination: PropTypes.object.isRequired,
     errorStates: PropTypes.object.isRequired,
-  },
+  };
 
-  _onPageChange(newPage, newPerPage) {
+  _onPageChange = (newPage, newPerPage) => {
     LookupTableDataAdaptersActions.searchPaginated(newPage, newPerPage,
       this.props.pagination.query);
-  },
+  };
 
-  _onSearch(query, resetLoadingStateCb) {
+  _onSearch = (query, resetLoadingStateCb) => {
     LookupTableDataAdaptersActions
       .searchPaginated(this.props.pagination.page, this.props.pagination.per_page, query)
       .then(resetLoadingStateCb);
-  },
+  };
 
-  _onReset() {
+  _onReset = () => {
     LookupTableDataAdaptersActions.searchPaginated(this.props.pagination.page, this.props.pagination.per_page);
-  },
+  };
 
-  _helpPopover() {
+  _helpPopover = () => {
     return (
       <Popover id="search-query-help" className={Styles.popoverWide} title="Search Syntax Help">
         <p><strong>Available search fields</strong></p>
@@ -79,7 +79,7 @@ const DataAdaptersOverview = React.createClass({
         </p>
       </Popover>
     );
-  },
+  };
 
   render() {
     if (!this.props.dataAdapters) {
@@ -108,14 +108,14 @@ const DataAdaptersOverview = React.createClass({
                 <Button bsStyle="link" className={Styles.searchHelpButton}><i className="fa fa-fw fa-question-circle" /></Button>
               </OverlayTrigger>
             </SearchForm>
-            <Table condensed hover>
+            <Table condensed hover className={Styles.overviewTable}>
               <thead>
                 <tr>
-                  <th>Title</th>
-                  <th>Description</th>
-                  <th>Name</th>
+                  <th className={Styles.rowTitle}>Title</th>
+                  <th className={Styles.rowDescription}>Description</th>
+                  <th className={Styles.rowName}>Name</th>
                   <th>Throughput</th>
-                  <th className={Styles.actions}>Actions</th>
+                  <th className={Styles.rowActions}>Actions</th>
                 </tr>
               </thead>
               {dataAdapters}
@@ -124,7 +124,7 @@ const DataAdaptersOverview = React.createClass({
         </Col>
       </Row>
     </div>);
-  },
-});
+  }
+}
 
 export default DataAdaptersOverview;

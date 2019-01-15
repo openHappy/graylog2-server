@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Alert, Col, Label } from 'react-bootstrap';
 
@@ -5,11 +6,11 @@ import { EntityListItem, Timestamp } from 'components/common';
 import { ConfigurationWell } from 'components/configurationforms';
 import DateTime from 'logic/datetimes/DateTime';
 
-const AlarmCallbackHistory = React.createClass({
-  propTypes: {
-    types: React.PropTypes.object.isRequired,
-    alarmCallbackHistory: React.PropTypes.object.isRequired,
-  },
+class AlarmCallbackHistory extends React.Component {
+  static propTypes = {
+    types: PropTypes.object.isRequired,
+    alarmCallbackHistory: PropTypes.object.isRequired,
+  };
 
   render() {
     const history = this.props.alarmCallbackHistory;
@@ -54,7 +55,7 @@ const AlarmCallbackHistory = React.createClass({
     return (
       <EntityListItem title={title} titleSuffix={result} description={description} contentRow={content} />
     );
-  },
-});
+  }
+}
 
 export default AlarmCallbackHistory;

@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Row, Col, Button } from 'react-bootstrap';
 import ISODurationUtils from 'util/ISODurationUtils';
@@ -7,38 +8,36 @@ import ObjectUtils from 'util/ObjectUtils';
 /**
  * Expects `this.props.options` to be an array of period/description objects. `[{period: 'PT1S', description: 'yo'}]`
  */
-const TimeRangeOptionsForm = React.createClass({
-  propTypes: {
-    options: React.PropTypes.array,
-    title: React.PropTypes.string.isRequired,
-    help: React.PropTypes.any.isRequired,
-    addButtonTitle: React.PropTypes.string,
-    update: React.PropTypes.func.isRequired,
-    validator: React.PropTypes.func,
-  },
+class TimeRangeOptionsForm extends React.Component {
+  static propTypes = {
+    options: PropTypes.array,
+    title: PropTypes.string.isRequired,
+    help: PropTypes.any.isRequired,
+    addButtonTitle: PropTypes.string,
+    update: PropTypes.func.isRequired,
+    validator: PropTypes.func,
+  };
 
-  getDefaultProps() {
-    return {
-      options: [],
-      addButtonTitle: 'Add option',
-      validator: () => true,
-    };
-  },
+  static defaultProps = {
+    options: [],
+    addButtonTitle: 'Add option',
+    validator: () => true,
+  };
 
-  _update(options) {
+  _update = (options) => {
     this.props.update(options);
-  },
+  };
 
-  _onAdd() {
+  _onAdd = () => {
     const options = ObjectUtils.clone(this.props.options);
 
     if (options) {
       options.push({ period: '', description: '' });
       this._update(options);
     }
-  },
+  };
 
-  _onRemove(removedIdx) {
+  _onRemove = (removedIdx) => {
     return () => {
       const options = ObjectUtils.clone(this.props.options);
 
@@ -47,9 +46,9 @@ const TimeRangeOptionsForm = React.createClass({
 
       this._update(options);
     };
-  },
+  };
 
-  _onChange(changedIdx, field) {
+  _onChange = (changedIdx, field) => {
     return (e) => {
       const options = ObjectUtils.clone(this.props.options);
 
@@ -70,10 +69,9 @@ const TimeRangeOptionsForm = React.createClass({
 
       this._update(options);
     };
-  },
+  };
 
-
-  _buildTimeRangeOptions() {
+  _buildTimeRangeOptions = () => {
     return this.props.options.map((option, idx) => {
       const period = option.period;
       const description = option.description;
@@ -106,7 +104,7 @@ const TimeRangeOptionsForm = React.createClass({
         </div>
       );
     });
-  },
+  };
 
   render() {
     return (
@@ -119,7 +117,7 @@ const TimeRangeOptionsForm = React.createClass({
         <Button bsSize="xs" onClick={this._onAdd}>{this.props.addButtonTitle}</Button>
       </div>
     );
-  },
-});
+  }
+}
 
 export default TimeRangeOptionsForm;

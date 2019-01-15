@@ -22,7 +22,7 @@
     <parent>
         <groupId>org.graylog</groupId>
         <artifactId>graylog-project-parent</artifactId>
-        <version>2.3.0-beta.2-SNAPSHOT</version>
+        <version>3.0.0-beta.3-SNAPSHOT</version>
         <relativePath>../graylog-project-parent</relativePath>
     </parent>
 
@@ -121,8 +121,8 @@
         </dependency>
         <!-- used for sanity -->
         <dependency>
-            <groupId>com.google.code.findbugs</groupId>
-            <artifactId>jsr305</artifactId>
+            <groupId>net.jcip</groupId>
+            <artifactId>jcip-annotations</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.auto.value</groupId>
@@ -142,7 +142,7 @@
             <artifactId>assertj-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.jayway.awaitility</groupId>
+            <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
         </dependency>
     </dependencies>

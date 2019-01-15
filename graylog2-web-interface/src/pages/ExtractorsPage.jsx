@@ -1,4 +1,6 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { DropdownButton, MenuItem } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
@@ -19,21 +21,27 @@ import StoreProvider from 'injection/StoreProvider';
 const NodesStore = StoreProvider.getStore('Nodes');
 const InputsStore = StoreProvider.getStore('Inputs');
 
-const ExtractorsPage = React.createClass({
+const ExtractorsPage = createReactClass({
+  displayName: 'ExtractorsPage',
+
   propTypes: {
     params: PropTypes.object.isRequired,
   },
+
   mixins: [Reflux.connect(InputsStore), Reflux.listenTo(NodesStore, 'onNodesChange')],
+
   getInitialState() {
     return {
       input: undefined,
       node: undefined,
     };
   },
+
   componentDidMount() {
     InputsActions.get.triggerPromise(this.props.params.inputId);
     NodesActions.list.triggerPromise();
   },
+
   onNodesChange(nodes) {
     let inputNode;
     if (this.props.params.nodeId) {
@@ -52,9 +60,11 @@ const ExtractorsPage = React.createClass({
       this.setState({ node: inputNode });
     }
   },
+
   _isLoading() {
     return !(this.state.input && this.state.node);
   },
+
   render() {
     if (this._isLoading()) {
       return <Spinner />;

@@ -1,17 +1,20 @@
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Button, Col, Row } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
+import { Col, Row } from 'react-bootstrap';
 
 import { DocumentTitle, PageHeader } from 'components/common';
+import { AlertsHeaderToolbar } from 'components/alerts';
 import { AlertNotificationsComponent } from 'components/alertnotifications';
 import Routes from 'routing/Routes';
 
 import StoreProvider from 'injection/StoreProvider';
 const CurrentUserStore = StoreProvider.getStore('CurrentUser');
 
-const AlertNotificationsPage = React.createClass({
+const AlertNotificationsPage = createReactClass({
+  displayName: 'AlertNotificationsPage',
   mixins: [Reflux.connect(CurrentUserStore)],
+
   render() {
     return (
       <DocumentTitle title="Alert notifications">
@@ -27,13 +30,7 @@ const AlertNotificationsPage = React.createClass({
             </span>
 
             <span>
-              <LinkContainer to={Routes.ALERTS.CONDITIONS}>
-                <Button bsStyle="info">Manage conditions</Button>
-              </LinkContainer>
-              &nbsp;
-              <Button bsStyle="info" href="https://marketplace.graylog.org/" target="_blank">
-                <i className="fa fa-external-link" />&nbsp; Find more notifications
-              </Button>
+              <AlertsHeaderToolbar active={Routes.ALERTS.NOTIFICATIONS} />
             </span>
           </PageHeader>
 

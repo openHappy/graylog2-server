@@ -1,18 +1,21 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import ReactDOM from 'react-dom';
 import { Page } from 'components/common';
 
 import EventHandlersThrottler from 'util/EventHandlersThrottler';
 
 import StoreProvider from 'injection/StoreProvider';
-const SearchStore = StoreProvider.getStore('Search');
 const UniversalSearchStore = StoreProvider.getStore('UniversalSearch');
 
 import $ from 'jquery';
 global.jQuery = $;
 require('bootstrap/js/affix');
 
-const MessageTablePaginator = React.createClass({
+const MessageTablePaginator = createReactClass({
+  displayName: 'MessageTablePaginator',
+
   propTypes: {
     resultCount: PropTypes.number.isRequired,
     currentPage: PropTypes.number.isRequired,
@@ -20,8 +23,17 @@ const MessageTablePaginator = React.createClass({
       PropTypes.arrayOf(PropTypes.element),
       PropTypes.element,
     ]),
+    onPageChange: PropTypes.func.isRequired,
+    pageSize: PropTypes.number,
     position: PropTypes.string,
   },
+
+  getDefaultProps() {
+    return {
+      pageSize: UniversalSearchStore.DEFAULT_LIMIT,
+    };
+  },
+
   getInitialState() {
     return {
       paginationWidth: 0,
@@ -42,7 +54,7 @@ const MessageTablePaginator = React.createClass({
 
   _initializeAffix() {
     if (this.props.position === 'bottom') {
-      $(ReactDOM.findDOMNode(this.refs.paginatorAffix)).affix({
+      $(ReactDOM.findDOMNode(this.paginatorAffix)).affix({
         offset: {
           top: 500,
           bottom: 10,
@@ -50,20 +62,24 @@ const MessageTablePaginator = React.createClass({
       });
     }
   },
+
   _setPaginationWidth() {
     if (this.props.position === 'bottom') {
       this.eventsThrottler.throttle(() => {
-        this.setState({ paginationWidth: ReactDOM.findDOMNode(this.refs.paginatorContainer).clientWidth });
+        this.setState({ paginationWidth: ReactDOM.findDOMNode(this.paginatorContainer).clientWidth });
       });
     }
   },
+
   _numberOfPages() {
-    return Math.ceil(this.props.resultCount / UniversalSearchStore.DEFAULT_LIMIT);
+    return Math.ceil(this.props.resultCount / this.props.pageSize);
   },
+
   _minPage() {
     const currentTenMin = Math.floor(this.props.currentPage / 10) * 10;
     return Math.max(1, currentTenMin);
   },
+
   _maxPage() {
     if (this.props.currentPage > this._numberOfPages()) {
       return this.props.currentPage;
@@ -71,6 +87,7 @@ const MessageTablePaginator = React.createClass({
     const currentTenMax = Math.ceil((this.props.currentPage + 1) / 10) * 10;
     return Math.min(this._numberOfPages(), currentTenMax);
   },
+
   _onPageChanged(page) {
     let newPage;
 
@@ -82,8 +99,9 @@ const MessageTablePaginator = React.createClass({
       newPage = Number(page);
     }
 
-    SearchStore.page = newPage;
+    this.props.onPageChange(newPage);
   },
+
   render() {
     const pages = [];
 
@@ -105,7 +123,7 @@ const MessageTablePaginator = React.createClass({
     let nav;
     if (this.props.position === 'bottom') {
       nav = (
-        <div ref="paginatorAffix">
+        <div ref={(paginatorAffix) => { this.paginatorAffix = paginatorAffix; }}>
           {this.props.children}
           <nav className="text-center"
                style={{ width: this.state.paginationWidth + 20 }}>
@@ -118,7 +136,7 @@ const MessageTablePaginator = React.createClass({
     }
 
     return (
-      <div ref="paginatorContainer" id={`message-table-paginator-${this.props.position}`}>
+      <div ref={(paginatorContainer) => { this.paginatorContainer = paginatorContainer; }} id={`message-table-paginator-${this.props.position}`}>
         {nav}
       </div>
     );

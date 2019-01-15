@@ -1,14 +1,18 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import { Button, Alert, Table } from 'react-bootstrap';
 import BootstrapModalForm from 'components/bootstrap/BootstrapModalForm';
 import { IfPermitted, SortableList } from 'components/common';
 import ObjectUtils from 'util/ObjectUtils';
 import naturalSort from 'javascript-natural-sort';
 
-const MessageProcessorsConfig = React.createClass({
+const MessageProcessorsConfig = createReactClass({
+  displayName: 'MessageProcessorsConfig',
+
   propTypes: {
-    config: React.PropTypes.object.isRequired,
-    updateConfig: React.PropTypes.func.isRequired,
+    config: PropTypes.object.isRequired,
+    updateConfig: PropTypes.func.isRequired,
   },
 
   getDefaultProps() {
@@ -29,12 +33,14 @@ const MessageProcessorsConfig = React.createClass({
     };
   },
 
+  inputs: {},
+
   _openModal() {
-    this.refs.configModal.open();
+    this.configModal.open();
   },
 
   _closeModal() {
-    this.refs.configModal.close();
+    this.configModal.close();
   },
 
   _saveConfig() {
@@ -64,7 +70,7 @@ const MessageProcessorsConfig = React.createClass({
     return () => {
       const disabledProcessors = this.state.config.disabled_processors;
       const update = ObjectUtils.clone(this.state.config);
-      const checked = this.refs[className].checked;
+      const checked = this.inputs[className].checked;
 
       if (checked) {
         update.disabled_processors = disabledProcessors.filter(p => p !== className);
@@ -117,7 +123,7 @@ const MessageProcessorsConfig = React.createClass({
         <tr key={idx}>
           <td>{processor.name}</td>
           <td>
-            <input ref={processor.class_name}
+            <input ref={(elem) => { this.inputs[processor.class_name] = elem; }}
                    type="checkbox"
                    checked={enabled}
                    onChange={this._toggleStatus(processor.class_name)} />
@@ -150,7 +156,7 @@ const MessageProcessorsConfig = React.createClass({
           <Button bsStyle="info" bsSize="xs" onClick={this._openModal}>Update</Button>
         </IfPermitted>
 
-        <BootstrapModalForm ref="configModal"
+        <BootstrapModalForm ref={(configModal) => { this.configModal = configModal; }}
                             title="Update Message Processors Configuration"
                             onSubmitForm={this._saveConfig}
                             onModalClose={this._resetConfig}

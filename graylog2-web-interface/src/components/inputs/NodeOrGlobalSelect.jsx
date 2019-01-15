@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { Input } from 'components/bootstrap';
 
@@ -7,19 +9,24 @@ const NodesStore = StoreProvider.getStore('Nodes');
 
 import { Spinner } from 'components/common';
 
-const NodeOrGlobalSelect = React.createClass({
+const NodeOrGlobalSelect = createReactClass({
+  displayName: 'NodeOrGlobalSelect',
+
   propTypes: {
-    global: React.PropTypes.bool,
-    onChange: React.PropTypes.func.isRequired,
-    node: React.PropTypes.string,
+    global: PropTypes.bool,
+    onChange: PropTypes.func.isRequired,
+    node: PropTypes.string,
   },
+
   mixins: [Reflux.connect(NodesStore)],
+
   getInitialState() {
     return {
       global: this.props.global !== undefined ? this.props.global : false,
       node: this.props.node,
     };
   },
+
   _onChangeGlobal(evt) {
     const global = evt.target.checked;
     this.setState({ global: global });
@@ -31,10 +38,12 @@ const NodeOrGlobalSelect = React.createClass({
     }
     this.props.onChange('global', global);
   },
+
   _onChangeNode(evt) {
     this.setState({ node: evt.target.value });
     this.props.onChange('node', evt.target.value);
   },
+
   render() {
     if (!this.state.nodes) {
       return <Spinner />;
@@ -46,8 +55,14 @@ const NodeOrGlobalSelect = React.createClass({
       });
 
     const nodeSelect = !this.state.global ? (
-      <Input type="select" label="Node" placeholder="placeholder" value={this.state.node}
-             help="On which node should this input start" onChange={this._onChangeNode} required>
+      <Input id="node-select"
+             type="select"
+             label="Node"
+             placeholder="placeholder"
+             value={this.state.node}
+             help="On which node should this input start"
+             onChange={this._onChangeNode}
+             required>
         <option key="placeholder" value="">Select Node</option>
         {options}
       </Input>
@@ -55,8 +70,12 @@ const NodeOrGlobalSelect = React.createClass({
 
     return (
       <span>
-        <Input type="checkbox" label="Global" help="Should this input start on all nodes"
-               checked={this.state.global} onChange={this._onChangeGlobal} />
+        <Input id="global-checkbox"
+               type="checkbox"
+               label="Global"
+               help="Should this input start on all nodes"
+               checked={this.state.global}
+               onChange={this._onChangeGlobal} />
         {nodeSelect}
       </span>
     );

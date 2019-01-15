@@ -1,4 +1,6 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 
 import StoreProvider from 'injection/StoreProvider';
@@ -11,11 +13,14 @@ const MetricsActions = ActionsProvider.getActions('Metrics');
 import { DocumentTitle, PageHeader, Spinner } from 'components/common';
 import { MetricsComponent } from 'components/metrics';
 
-const ShowMetricsPage = React.createClass({
+const ShowMetricsPage = createReactClass({
+  displayName: 'ShowMetricsPage',
+
   propTypes: {
     location: PropTypes.object.isRequired,
     params: PropTypes.object.isRequired,
   },
+
   mixins: [Reflux.connect(NodesStore), Reflux.connect(MetricsStore), Reflux.listenTo(NodesStore, '_getMetrics')],
 
   _getMetrics() {

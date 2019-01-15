@@ -1,21 +1,27 @@
 import $ from 'jquery';
 
+import PropTypes from 'prop-types';
+
 import React from 'react';
+import createReactClass from 'create-react-class';
 import { Input } from 'components/bootstrap';
 
 import BootstrapModalForm from '../bootstrap/BootstrapModalForm';
 
-import StoreProvider from 'injection/StoreProvider';
-const DashboardsStore = StoreProvider.getStore('Dashboards');
+import CombinedProvider from 'injection/CombinedProvider';
+const { DashboardsActions } = CombinedProvider.get('Dashboards');
 
-const EditDashboardModal = React.createClass({
+const EditDashboardModal = createReactClass({
+  displayName: 'EditDashboardModal',
+
   propTypes: {
-    action: React.PropTypes.oneOf(['create', 'edit']),
-    description: React.PropTypes.string,
-    id: React.PropTypes.string,
-    onSaved: React.PropTypes.func,
-    title: React.PropTypes.string,
+    action: PropTypes.oneOf(['create', 'edit']),
+    description: PropTypes.string,
+    id: PropTypes.string,
+    onSaved: PropTypes.func,
+    title: PropTypes.string,
   },
+
   getInitialState() {
     return {
       id: this.props.id,
@@ -23,35 +29,40 @@ const EditDashboardModal = React.createClass({
       title: this.props.title,
     };
   },
+
   getDefaultProps() {
     return {
       action: 'create',
     };
   },
+
   render() {
     return (
-      <BootstrapModalForm ref="modal"
+      <BootstrapModalForm ref={(modal) => { this.modal = modal; }}
                           title={this._isCreateModal() ? 'New Dashboard' : `Edit Dashboard ${this.props.title}`}
                           onSubmitForm={this._save}
                           submitButtonText="Save">
         <fieldset>
           <Input id={`${this.props.id}-title`} type="text" label="Title:" onChange={this._onTitleChange} value={this.state.title} autoFocus required />
-          <Input type="text" label="Description:" name="Description" onChange={this._onDescriptionChange} value={this.state.description} required />
+          <Input id={`${this.props.id}-description`} type="text" label="Description:" name="Description" onChange={this._onDescriptionChange} value={this.state.description} required />
         </fieldset>
       </BootstrapModalForm>
     );
   },
+
   close() {
-    this.refs.modal.close();
+    this.modal.close();
   },
+
   open() {
-    this.refs.modal.open();
+    this.modal.open();
   },
+
   _save() {
     let promise;
 
     if (this._isCreateModal()) {
-      promise = DashboardsStore.createDashboard(this.state.title, this.state.description);
+      promise = DashboardsActions.create(this.state.title, this.state.description);
       promise.then((id) => {
         this.close();
 
@@ -62,20 +73,9 @@ const EditDashboardModal = React.createClass({
         this.setState(this.getInitialState());
       });
     } else {
-      promise = DashboardsStore.saveDashboard(this.state);
+      promise = DashboardsActions.update(this.state);
       promise.then(() => {
         this.close();
-
-        const idSelector = `[data-dashboard-id="${this.state.id}"]`;
-        const $title = $(`${idSelector}.dashboard-title`);
-        if ($title.length > 0) {
-          $title.html(this.state.title);
-        }
-
-        const $description = $(`${idSelector}.dashboard-description`);
-        if ($description.length > 0) {
-          $description.html(this.state.description);
-        }
 
         if (typeof this.props.onSaved === 'function') {
           this.props.onSaved(this.state.id);
@@ -83,12 +83,15 @@ const EditDashboardModal = React.createClass({
       });
     }
   },
+
   _onDescriptionChange(event) {
     this.setState({ description: event.target.value });
   },
+
   _onTitleChange(event) {
     this.setState({ title: event.target.value });
   },
+
   _isCreateModal() {
     return this.props.action === 'create';
   },

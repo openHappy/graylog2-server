@@ -26,26 +26,21 @@ import org.graylog2.Configuration;
 import org.graylog2.alerts.AlertSender;
 import org.graylog2.alerts.EmailRecipients;
 import org.graylog2.alerts.FormattedEmailAlertSender;
-import org.graylog2.bindings.providers.BundleExporterProvider;
-import org.graylog2.bindings.providers.BundleImporterProvider;
 import org.graylog2.bindings.providers.ClusterEventBusProvider;
 import org.graylog2.bindings.providers.DefaultSecurityManagerProvider;
 import org.graylog2.bindings.providers.DefaultStreamProvider;
 import org.graylog2.bindings.providers.MongoConnectionProvider;
-import org.graylog2.bindings.providers.RulesEngineProvider;
 import org.graylog2.bindings.providers.SystemJobFactoryProvider;
 import org.graylog2.bindings.providers.SystemJobManagerProvider;
-import org.graylog2.bundles.BundleService;
 import org.graylog2.cluster.ClusterConfigServiceImpl;
 import org.graylog2.dashboards.widgets.WidgetCacheTime;
 import org.graylog2.dashboards.widgets.WidgetEventsListener;
 import org.graylog2.database.MongoConnection;
 import org.graylog2.events.ClusterEventBus;
-import org.graylog2.filters.FilterService;
-import org.graylog2.filters.FilterServiceImpl;
 import org.graylog2.grok.GrokModule;
 import org.graylog2.grok.GrokPatternRegistry;
 import org.graylog2.indexer.SetIndexReadOnlyJob;
+import org.graylog2.indexer.fieldtypes.FieldTypesModule;
 import org.graylog2.indexer.healing.FixDeflectorByDeleteJob;
 import org.graylog2.indexer.healing.FixDeflectorByMoveJob;
 import org.graylog2.indexer.indices.jobs.IndexSetCleanupJob;
@@ -57,12 +52,12 @@ import org.graylog2.inputs.InputEventListener;
 import org.graylog2.inputs.InputStateListener;
 import org.graylog2.inputs.PersistedInputsImpl;
 import org.graylog2.lookup.LookupModule;
-import org.graylog2.plugin.RulesEngine;
 import org.graylog2.plugin.cluster.ClusterConfigService;
 import org.graylog2.plugin.inject.Graylog2Module;
 import org.graylog2.plugin.streams.DefaultStream;
 import org.graylog2.plugin.streams.Stream;
 import org.graylog2.rest.ElasticsearchExceptionMapper;
+import org.graylog2.rest.GenericErrorCsvWriter;
 import org.graylog2.rest.GraylogErrorPageGenerator;
 import org.graylog2.rest.NotFoundExceptionMapper;
 import org.graylog2.rest.QueryParsingExceptionMapper;
@@ -80,6 +75,7 @@ import org.graylog2.shared.journal.NoopJournalModule;
 import org.graylog2.shared.metrics.jersey2.MetricsDynamicBinding;
 import org.graylog2.shared.security.RestrictToMasterFeature;
 import org.graylog2.shared.system.activities.ActivityWriter;
+import org.graylog2.streams.DefaultStreamChangeHandler;
 import org.graylog2.streams.StreamRouter;
 import org.graylog2.streams.StreamRouterEngine;
 import org.graylog2.system.activities.SystemMessageActivityWriter;
@@ -93,11 +89,10 @@ import org.graylog2.users.RoleService;
 import org.graylog2.users.RoleServiceImpl;
 import org.graylog2.users.StartPageCleanupListener;
 import org.graylog2.users.UserImpl;
+import org.graylog2.users.UserPermissionsCleanupListener;
 
 import javax.ws.rs.container.DynamicFeature;
 import javax.ws.rs.ext.ExceptionMapper;
-
-import static com.google.inject.name.Names.named;
 
 public class ServerBindings extends Graylog2Module {
     private final Configuration configuration;
@@ -120,6 +115,7 @@ public class ServerBindings extends Graylog2Module {
         bindSearchResponseDecorators();
         install(new GrokModule());
         install(new LookupModule());
+        install(new FieldTypesModule());
     }
 
     private void bindProviders() {
@@ -145,6 +141,7 @@ public class ServerBindings extends Graylog2Module {
 
         install(new FactoryModuleBuilder().build(ProcessBufferProcessor.Factory.class));
         bind(Stream.class).annotatedWith(DefaultStream.class).toProvider(DefaultStreamProvider.class);
+        bind(DefaultStreamChangeHandler.class).asEagerSingleton();
     }
 
     private void bindSingletons() {
@@ -158,25 +155,19 @@ public class ServerBindings extends Graylog2Module {
         }
 
         bind(SystemJobManager.class).toProvider(SystemJobManagerProvider.class);
-        bind(RulesEngine.class).toProvider(RulesEngineProvider.class);
         bind(LdapConnector.class).in(Scopes.SINGLETON);
         bind(LdapUserAuthenticator.class).in(Scopes.SINGLETON);
         bind(DefaultSecurityManager.class).toProvider(DefaultSecurityManagerProvider.class).asEagerSingleton();
         bind(SystemJobFactory.class).toProvider(SystemJobFactoryProvider.class);
         bind(GracefulShutdown.class).in(Scopes.SINGLETON);
-        bind(BundleService.class).in(Scopes.SINGLETON);
-        bind(BundleImporterProvider.class).in(Scopes.SINGLETON);
-        bind(BundleExporterProvider.class).in(Scopes.SINGLETON);
         bind(ClusterStatsModule.class).asEagerSingleton();
         bind(ClusterConfigService.class).to(ClusterConfigServiceImpl.class).asEagerSingleton();
         bind(GrokPatternRegistry.class).in(Scopes.SINGLETON);
-        bind(Engine.class).toInstance(Engine.createCompilingEngine());
+        bind(Engine.class).toInstance(Engine.createEngine());
         bind(ErrorPageGenerator.class).to(GraylogErrorPageGenerator.class).asEagerSingleton();
 
-        bind(String[].class).annotatedWith(named("RestControllerPackages")).toInstance(new String[]{
-                "org.graylog2.rest.resources",
-                "org.graylog2.shared.rest.resources"
-        });
+        registerRestControllerPackage("org.graylog2.rest.resources");
+        registerRestControllerPackage("org.graylog2.shared.rest.resources");
     }
 
     private void bindInterfaces() {
@@ -184,7 +175,6 @@ public class ServerBindings extends Graylog2Module {
         bind(StreamRouter.class);
         install(new FactoryModuleBuilder().implement(StreamRouterEngine.class, StreamRouterEngine.class).build(
                 StreamRouterEngine.Factory.class));
-        bind(FilterService.class).to(FilterServiceImpl.class).in(Scopes.SINGLETON);
         bind(ActivityWriter.class).to(SystemMessageActivityWriter.class);
         bind(PersistedInputs.class).to(PersistedInputsImpl.class);
 
@@ -207,6 +197,7 @@ public class ServerBindings extends Graylog2Module {
 
     private void bindAdditionalJerseyComponents() {
         jerseyAdditionalComponentsBinder().addBinding().toInstance(ScrollChunkWriter.class);
+        jerseyAdditionalComponentsBinder().addBinding().toInstance(GenericErrorCsvWriter.class);
     }
 
     private void bindEventBusListeners() {
@@ -216,6 +207,7 @@ public class ServerBindings extends Graylog2Module {
         bind(ClusterDebugEventListener.class).asEagerSingleton();
         bind(StartPageCleanupListener.class).asEagerSingleton();
         bind(WidgetEventsListener.class).asEagerSingleton();
+        bind(UserPermissionsCleanupListener.class).asEagerSingleton();
     }
 
     private void bindSearchResponseDecorators() {

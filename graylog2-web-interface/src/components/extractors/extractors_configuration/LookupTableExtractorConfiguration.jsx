@@ -1,6 +1,7 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Row, Col, Button } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
+import { Link } from 'react-router';
 
 import { Input } from 'components/bootstrap';
 import { Select, Spinner } from 'components/common';
@@ -13,50 +14,46 @@ import CombinedProvider from 'injection/CombinedProvider';
 const ToolsStore = StoreProvider.getStore('Tools');
 const { LookupTablesActions } = CombinedProvider.get('LookupTables');
 
-const LookupTableExtractorConfiguration = React.createClass({
-  propTypes: {
+class LookupTableExtractorConfiguration extends React.Component {
+  static propTypes = {
     configuration: PropTypes.object.isRequired,
     exampleMessage: PropTypes.string,
     onChange: PropTypes.func.isRequired,
     onExtractorPreviewLoad: PropTypes.func.isRequired,
-  },
+  };
 
-  getDefaultProps() {
-    return {
-      exampleMessage: '',
-    };
-  },
+  static defaultProps = {
+    exampleMessage: '',
+  };
 
-  getInitialState() {
-    return {
-      trying: false,
-      lookupTables: undefined,
-    };
-  },
+  state = {
+    trying: false,
+    lookupTables: undefined,
+  };
 
   componentDidMount() {
     // TODO the 10k items is bad. we need a searchable/scrollable long list select box
     LookupTablesActions.searchPaginated(1, 10000, null).then((result) => {
       this.setState({ lookupTables: result.lookup_tables });
     });
-  },
+  }
 
-  _updateConfigValue(key, value) {
+  _updateConfigValue = (key, value) => {
     this.props.onExtractorPreviewLoad(undefined);
     const newConfig = this.props.configuration;
     newConfig[key] = value;
     this.props.onChange(newConfig);
-  },
+  };
 
-  _onChange(key) {
+  _onChange = (key) => {
     return event => this._updateConfigValue(key, FormUtils.getValueFromInput(event.target));
-  },
+  };
 
-  _onSelect(key) {
+  _onSelect = (key) => {
     return value => this._updateConfigValue(key, value);
-  },
+  };
 
-  _onTryClick() {
+  _onTryClick = () => {
     this.setState({ trying: true });
 
     const promise = ToolsStore.testLookupTable(this.props.configuration.lookup_table_name, this.props.exampleMessage);
@@ -74,11 +71,11 @@ const LookupTableExtractorConfiguration = React.createClass({
     });
 
     promise.finally(() => this.setState({ trying: false }));
-  },
+  };
 
-  _isTryButtonDisabled() {
+  _isTryButtonDisabled = () => {
     return this.state.trying || !this.props.configuration.lookup_table_name || !this.props.exampleMessage;
-  },
+  };
 
   render() {
     if (!this.state.lookupTables) {
@@ -91,7 +88,7 @@ const LookupTableExtractorConfiguration = React.createClass({
 
     const helpMessage = (
       <span>
-        Lookup tables can be created <LinkContainer to={Routes.SYSTEM.LOOKUPTABLES.OVERVIEW}><a>here</a></LinkContainer>.
+        Lookup tables can be created <Link to={Routes.SYSTEM.LOOKUPTABLES.OVERVIEW}>here</Link>.
       </span>
     );
 
@@ -108,7 +105,7 @@ const LookupTableExtractorConfiguration = React.createClass({
                       clearable={false}
                       options={lookupTables}
                       matchProp="value"
-                      onValueChange={this._onSelect('lookup_table_name')}
+                      onChange={this._onSelect('lookup_table_name')}
                       value={this.props.configuration.lookup_table_name} />
             </Col>
             <Col md={1} className="text-right">
@@ -120,7 +117,7 @@ const LookupTableExtractorConfiguration = React.createClass({
         </Input>
       </div>
     );
-  },
-});
+  }
+}
 
 export default LookupTableExtractorConfiguration;

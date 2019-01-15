@@ -1,12 +1,14 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import moment from 'moment';
 
 import { LinkToNode } from 'components/common';
 
-const SystemMessage = React.createClass({
-  propTypes: {
-    message: React.PropTypes.object.isRequired,
-  },
+class SystemMessage extends React.Component {
+  static propTypes = {
+    message: PropTypes.object.isRequired,
+  };
+
   render() {
     const message = this.props.message;
     return (
@@ -18,7 +20,7 @@ const SystemMessage = React.createClass({
         <td>{message.content}</td>
       </tr>
     );
-  },
-});
+  }
+}
 
 export default SystemMessage;

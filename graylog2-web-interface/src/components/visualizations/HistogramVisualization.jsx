@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import ReactDOM from 'react-dom';
 import numeral from 'numeral';
 import crossfilter from 'crossfilter';
@@ -17,29 +18,47 @@ import $ from 'jquery';
 global.jQuery = $;
 require('bootstrap/js/tooltip');
 
-const HistogramVisualization = React.createClass({
-  propTypes: {
+class HistogramVisualization extends React.Component {
+  static propTypes = {
     id: PropTypes.string.isRequired,
     data: PropTypes.object.isRequired,
     config: PropTypes.object.isRequired,
     computationTimeRange: PropTypes.object,
     height: PropTypes.number,
     width: PropTypes.number,
-  },
-  getInitialState() {
+    interactive: PropTypes.bool,
+    onRenderComplete: PropTypes.func,
+    keyTitleRenderer: PropTypes.func,
+    valueTitleRenderer: PropTypes.func,
+  };
+
+  static defaultProps = {
+    interactive: true,
+    onRenderComplete: () => {
+    },
+    keyTitleRenderer: d => `<span class="date">${new DateTime(d.x).toString(DateTime.Formats.COMPLETE)}</span>`,
+    valueTitleRenderer: d => `${numeral(d.y).format('0,0')} messages`,
+  };
+
+  constructor(props) {
+    super(props);
     this.triggerRender = true;
     this.histogramData = crossfilter();
     this.dimension = this.histogramData.dimension(d => d.x);
     this.group = this.dimension.group().reduceSum(d => d.y);
 
-    return {
+    this.state = {
       dataPoints: [],
     };
-  },
+  }
+
   componentDidMount() {
+    this.disableTransitions = dc.disableTransitions;
+    dc.disableTransitions = !this.props.interactive;
     this.renderHistogram();
     this._updateData(this.props.data);
-  },
+  }
+
   componentWillReceiveProps(nextProps) {
     if (deepEqual(this.props, nextProps)) {
       return;
@@ -49,17 +68,24 @@ const HistogramVisualization = React.createClass({
       this._resizeVisualization(nextProps.width, nextProps.height);
     }
     this._updateData(nextProps.data);
-  },
-  _updateData(data) {
+  }
+
+  componentWillUnmount() {
+    dc.disableTransitions = this.disableTransitions;
+  }
+
+  _updateData = (data) => {
     this.setState({ dataPoints: data }, this.drawData);
-  },
-  _resizeVisualization(width, height) {
+  };
+
+  _resizeVisualization = (width, height) => {
     this.histogram
       .width(width)
       .height(height);
     this.triggerRender = true;
-  },
-  drawData() {
+  };
+
+  drawData = () => {
     const isSearchAll = (this.props.config.timerange.type === 'relative' && this.props.config.timerange.range === 0);
     const dataPoints = HistogramFormatter.format(this.state.dataPoints, this.props.computationTimeRange,
       this.props.config.interval, this.props.width, isSearchAll, null);
@@ -76,9 +102,35 @@ const HistogramVisualization = React.createClass({
     } else {
       this.histogram.redraw();
     }
-  },
-  renderHistogram() {
-    const histogramDomNode = ReactDOM.findDOMNode(this);
+  };
+
+  _renderTooltip = (histogram, histogramDomNode) => {
+    histogram.on('renderlet', () => {
+      const formatTitle = (d) => {
+        const valueText = this.props.valueTitleRenderer(d);
+        const keyText = this.props.keyTitleRenderer(d);
+
+        return `<div class="datapoint-info">${valueText}<br>${keyText}</div>`;
+      };
+
+      d3.select(histogramDomNode).selectAll('.chart-body rect.bar')
+        .attr('rel', 'tooltip')
+        .attr('data-original-title', formatTitle);
+    });
+
+    $(histogramDomNode).tooltip({
+      selector: '[rel="tooltip"]',
+      container: 'body',
+      placement: 'auto',
+      delay: { show: 300, hide: 100 },
+      html: true,
+    });
+  };
+
+  renderHistogram = () => {
+    const histogramDomNode = this._graph;
+    const xAxisLabel = this.props.config.xAxis || 'Time';
+    const yAxisLabel = this.props.config.yAxis || 'Messages';
 
     this.histogram = dc.barChart(histogramDomNode);
     this.histogram
@@ -93,30 +145,16 @@ const HistogramVisualization = React.createClass({
       .centerBar(true)
       .renderHorizontalGridLines(true)
       .brushOn(false)
-      .xAxisLabel('Time')
-      .yAxisLabel('Messages')
+      .xAxisLabel(xAxisLabel)
+      .yAxisLabel(yAxisLabel)
       .renderTitle(false)
-      .colors(D3Utils.glColourPalette())
-      .on('renderlet', () => {
-        const formatTitle = (d) => {
-          const valueText = `${numeral(d.y).format('0,0')} messages`;
-          const keyText = `<span class="date">${new DateTime(d.x).toString(DateTime.Formats.COMPLETE)}</span>`;
+      .colors(D3Utils.glColourPalette());
 
-          return `<div class="datapoint-info">${valueText}<br>${keyText}</div>`;
-        };
+    if (this.props.interactive) {
+      this._renderTooltip(this.histogram, histogramDomNode);
+    }
 
-        d3.select(histogramDomNode).selectAll('.chart-body rect.bar')
-          .attr('rel', 'tooltip')
-          .attr('data-original-title', formatTitle);
-      });
-
-    $(histogramDomNode).tooltip({
-      selector: '[rel="tooltip"]',
-      container: 'body',
-      placement: 'auto',
-      delay: { show: 300, hide: 100 },
-      html: true,
-    });
+    this.histogram.on('postRender', this.props.onRenderComplete);
 
     this.histogram.xAxis()
       .ticks(graphHelper.customTickInterval())
@@ -127,12 +165,13 @@ const HistogramVisualization = React.createClass({
         return value % 1 === 0 ? d3.format('s')(value) : null;
       });
     this.histogram.render();
-  },
+  };
+
   render() {
     return (
-      <div id={`visualization-${this.props.id}`} className="histogram" />
+      <div ref={(c) => { this._graph = c; }} id={`visualization-${this.props.id}`} className="histogram" />
     );
-  },
-});
+  }
+}
 
 export default HistogramVisualization;

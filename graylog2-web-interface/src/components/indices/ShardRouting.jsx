@@ -1,11 +1,13 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import classNames from 'classnames';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
 
-const ShardRouting = React.createClass({
-  propTypes: {
-    route: React.PropTypes.object.isRequired,
-  },
+class ShardRouting extends React.Component {
+  static propTypes = {
+    route: PropTypes.object.isRequired,
+  };
+
   render() {
     const route = this.props.route;
     const tooltip = <Tooltip id="shard-route-state-tooltip">State: <i>{route.state}</i> on {route.node_hostname} ({route.node_name})</Tooltip>;
@@ -16,7 +18,7 @@ const ShardRouting = React.createClass({
         </OverlayTrigger>
       </li>
     );
-  },
-});
+  }
+}
 
 export default ShardRouting;

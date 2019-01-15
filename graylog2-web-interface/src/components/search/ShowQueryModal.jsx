@@ -1,29 +1,33 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import PureRenderMixin from 'react-addons-pure-render-mixin';
 import { Modal } from 'react-bootstrap';
 
 import BootstrapModalWrapper from 'components/bootstrap/BootstrapModalWrapper';
 import { ClipboardButton } from 'components/common';
 
-const ShowQueryModal = React.createClass({
+const ShowQueryModal = createReactClass({
+  displayName: 'ShowQueryModal',
+
   propTypes: {
-    builtQuery: React.PropTypes.string,
+    builtQuery: PropTypes.string,
   },
 
   mixins: [PureRenderMixin],
 
   open() {
-    this.refs.modal.open();
+    this.modal.open();
   },
 
   close() {
-    this.refs.modal.close();
+    this.modal.close();
   },
 
   render() {
     const queryText = JSON.stringify(JSON.parse(this.props.builtQuery), null, '  ');
     return (
-      <BootstrapModalWrapper ref="modal">
+      <BootstrapModalWrapper ref={(modal) => { this.modal = modal; }}>
         <Modal.Header closeButton>
           <Modal.Title>Elasticsearch Query</Modal.Title>
         </Modal.Header>

@@ -6,10 +6,9 @@ import { NotificationsList } from 'components/notifications';
 import { SystemJobsComponent } from 'components/systemjobs';
 import { SystemMessagesComponent } from 'components/systemmessages';
 import { TimesList } from 'components/times';
-import UsageStatsOptIn from 'components/usagestats/UsageStatsOptIn';
 import { GraylogClusterOverview } from 'components/cluster';
 
-const SystemOverviewPage = React.createClass({
+class SystemOverviewPage extends React.Component {
   render() {
     return (
       <DocumentTitle title="System overview">
@@ -34,17 +33,13 @@ const SystemOverviewPage = React.createClass({
 
           <TimesList />
 
-          <IfPermitted permissions="clusterconfigentry:edit:org.graylog.plugins.usagestatistics.UsageStatsOptOutState">
-            <UsageStatsOptIn />
-          </IfPermitted>
-
           <IfPermitted permissions="systemmessages:read">
             <SystemMessagesComponent />
           </IfPermitted>
         </span>
       </DocumentTitle>
     );
-  },
-});
+  }
+}
 
 export default SystemOverviewPage;

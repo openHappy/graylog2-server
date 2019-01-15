@@ -1,11 +1,13 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import numeral from 'numeral';
 import NumberUtils from 'util/NumberUtils';
 
-const IndexSizeSummary = React.createClass({
-  propTypes: {
-    index: React.PropTypes.object.isRequired,
-  },
+class IndexSizeSummary extends React.Component {
+  static propTypes = {
+    index: PropTypes.object.isRequired,
+  };
+
   render() {
     const { index } = this.props;
     if (index.size) {
@@ -16,7 +18,7 @@ const IndexSizeSummary = React.createClass({
     }
 
     return <span />;
-  },
-});
+  }
+}
 
 export default IndexSizeSummary;

@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Button, ButtonGroup } from 'react-bootstrap';
 import Immutable from 'immutable';
@@ -11,28 +12,36 @@ const RefreshActions = ActionsProvider.getActions('Refresh');
 
 import { MessageTableEntry, MessageTablePaginator } from 'components/search';
 
-const ResultTable = React.createClass({
-  propTypes: {
-    highlight: React.PropTypes.bool.isRequired,
-    inputs: React.PropTypes.object.isRequired,
-    messages: React.PropTypes.array.isRequired,
-    nodes: React.PropTypes.object.isRequired,
-    page: React.PropTypes.number.isRequired,
-    resultCount: React.PropTypes.number.isRequired,
-    selectedFields: React.PropTypes.object.isRequired,
-    sortField: React.PropTypes.string.isRequired,
-    sortOrder: React.PropTypes.string.isRequired,
-    streams: React.PropTypes.object.isRequired,
-    searchConfig: React.PropTypes.object.isRequired,
-  },
-  getInitialState() {
-    return {
-      expandedMessages: Immutable.Set(),
-      allStreamsLoaded: false,
-      allStreams: Immutable.List(),
-      expandAllRenderAsync: false,
-    };
-  },
+class ResultTable extends React.Component {
+  static propTypes = {
+    disableSurroundingSearch: PropTypes.bool,
+    highlight: PropTypes.bool.isRequired,
+    inputs: PropTypes.object.isRequired,
+    messages: PropTypes.array.isRequired,
+    nodes: PropTypes.object.isRequired,
+    onPageChange: PropTypes.func,
+    page: PropTypes.number.isRequired,
+    pageSize: PropTypes.number,
+    resultCount: PropTypes.number.isRequired,
+    selectedFields: PropTypes.object.isRequired,
+    sortField: PropTypes.string.isRequired,
+    sortOrder: PropTypes.string.isRequired,
+    streams: PropTypes.object.isRequired,
+    searchConfig: PropTypes.object.isRequired,
+  };
+
+  static defaultProps = {
+    disableSurroundingSearch: false,
+    onPageChange: (page) => { SearchStore.page = page; },
+  };
+
+  state = {
+    expandedMessages: Immutable.Set(),
+    allStreamsLoaded: false,
+    allStreams: Immutable.List(),
+    expandAllRenderAsync: false,
+  };
+
   componentDidMount() {
     // only load the streams per page
     if (this.state.allStreamsLoaded) {
@@ -40,20 +49,23 @@ const ResultTable = React.createClass({
     }
     const promise = StreamsStore.listStreams();
     promise.done(streams => this._onStreamsLoaded(streams));
-  },
+  }
+
   componentDidUpdate() {
     if (this.state.expandAllRenderAsync) {
       // This may take some time, so we ensure we display a loading indicator in the page
       // while all messages are being expanded
       setTimeout(() => this.setState({ expandAllRenderAsync: false }), this.EXPAND_ALL_RENDER_ASYNC_DELAY);
     }
-  },
-  EXPAND_ALL_RENDER_ASYNC_DELAY: 10,
-  _onStreamsLoaded(streams) {
-    this.setState({ allStreamsLoaded: true, allStreams: Immutable.List(streams).sortBy(stream => stream.title) });
-  },
+  }
 
-  _toggleMessageDetail(id) {
+  EXPAND_ALL_RENDER_ASYNC_DELAY = 10;
+
+  _onStreamsLoaded = (streams) => {
+    this.setState({ allStreamsLoaded: true, allStreams: Immutable.List(streams).sortBy(stream => stream.title) });
+  };
+
+  _toggleMessageDetail = (id) => {
     let newSet;
     if (this.state.expandedMessages.contains(id)) {
       newSet = this.state.expandedMessages.delete(id);
@@ -62,33 +74,38 @@ const ResultTable = React.createClass({
       RefreshActions.disable();
     }
     this.setState({ expandedMessages: newSet });
-  },
+  };
 
-  _fieldColumns() {
+  _fieldColumns = () => {
     return this.props.selectedFields.delete('message');
-  },
-  _columnStyle(fieldName) {
+  };
+
+  _columnStyle = (fieldName) => {
     if (fieldName.toLowerCase() === 'source' && this._fieldColumns().size > 1) {
       return { width: 180 };
     }
     return {};
-  },
-  expandAll() {
+  };
+
+  expandAll = () => {
     // If more than 30% of the messages are being expanded, show a loading indicator
     const expandedChangeRatio = (this.props.messages.length - this.state.expandedMessages.size) / 100;
     const renderLoadingIndicator = expandedChangeRatio > 0.3;
 
     const newSet = Immutable.Set(this.props.messages.map(message => `${message.index}-${message.id}`));
     this.setState({ expandedMessages: newSet, expandAllRenderAsync: renderLoadingIndicator });
-  },
-  collapseAll() {
+  };
+
+  collapseAll = () => {
     this.setState({ expandedMessages: Immutable.Set() });
-  },
-  _handleSort(e, field, order) {
+  };
+
+  _handleSort = (e, field, order) => {
     e.preventDefault();
     SearchStore.sort(field, order);
-  },
-  _sortIcons(fieldName) {
+  };
+
+  _sortIcons = (fieldName) => {
     let sortLinks = null;
     // the classes look funny, but using the default asc/desc icons looks odd.
     // .sort-order-item does the margins
@@ -123,7 +140,7 @@ const ResultTable = React.createClass({
       );
     }
     return <span>{sortLinks}</span>;
-  },
+  };
 
   render() {
     const selectedColumns = this._fieldColumns();
@@ -138,7 +155,10 @@ const ResultTable = React.createClass({
                   disabled={this.state.expandedMessages.size === 0}><i className="fa fa-compress" /></Button>
         </ButtonGroup>
 
-        <MessageTablePaginator position="top" currentPage={Number(this.props.page)}
+        <MessageTablePaginator currentPage={Number(this.props.page)}
+                               onPageChange={this.props.onPageChange}
+                               pageSize={this.props.pageSize}
+                               position="top"
                                resultCount={this.props.resultCount} />
 
         <div className="search-results-table">
@@ -161,6 +181,7 @@ const ResultTable = React.createClass({
                 {this.props.messages.map((message) => {
                   return (
                     <MessageTableEntry key={`${message.index}-${message.id}`}
+                                       disableSurroundingSearch={this.props.disableSurroundingSearch}
                                        message={message}
                                        showMessageRow={this.props.selectedFields.contains('message')}
                                        selectedFields={selectedColumns}
@@ -182,7 +203,10 @@ const ResultTable = React.createClass({
           </div>
         </div>
 
-        <MessageTablePaginator position="bottom" currentPage={Number(this.props.page)}
+        <MessageTablePaginator currentPage={Number(this.props.page)}
+                               onPageChange={this.props.onPageChange}
+                               pageSize={this.props.pageSize}
+                               position="bottom"
                                resultCount={this.props.resultCount}>
           <ButtonGroup bsSize="small" className="pull-right" style={{ position: 'absolute', marginTop: 20, right: 10 }}>
             <Button title="Expand all messages" onClick={this.expandAll}><i className="fa fa-expand" /></Button>
@@ -193,7 +217,7 @@ const ResultTable = React.createClass({
         </MessageTablePaginator>
       </div>
     );
-  },
-});
+  }
+}
 
 export default ResultTable;

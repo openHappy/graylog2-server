@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Immutable from 'immutable';
 import { Alert, Button, Col, ControlLabel, FormGroup, HelpBlock, Row } from 'react-bootstrap';
 
@@ -6,13 +8,15 @@ import { Input } from 'components/bootstrap';
 import PermissionSelector from 'components/users/PermissionSelector';
 import PermissionsMixin from 'util/PermissionsMixin';
 
-const EditRole = React.createClass({
+const EditRole = createReactClass({
+  displayName: 'EditRole',
+
   propTypes: {
-    initialRole: React.PropTypes.object,
-    onSave: React.PropTypes.func.isRequired,
-    cancelEdit: React.PropTypes.func.isRequired,
-    streams: React.PropTypes.object,
-    dashboards: React.PropTypes.object,
+    initialRole: PropTypes.object,
+    onSave: PropTypes.func.isRequired,
+    cancelEdit: PropTypes.func.isRequired,
+    streams: PropTypes.object,
+    dashboards: PropTypes.object,
   },
 
   mixins: [PermissionsMixin],
@@ -42,6 +46,7 @@ const EditRole = React.createClass({
     role.name = ev.target.value;
     this.setState({ role: this.state.role });
   },
+
   _setDescription(ev) {
     const role = this.state.role;
     role.description = ev.target.value;

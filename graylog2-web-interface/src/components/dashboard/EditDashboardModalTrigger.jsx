@@ -1,22 +1,25 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
 import { EditDashboardModal } from 'components/dashboard';
 
-const EditDashboardModalTrigger = React.createClass({
-  propTypes: {
-    action: React.PropTypes.string.isRequired,
-  },
-  getDefaultProps() {
-    return {
-      action: 'create',
-    };
-  },
-  _isCreateModal() {
+class EditDashboardModalTrigger extends React.Component {
+  static propTypes = {
+    action: PropTypes.string.isRequired,
+  };
+
+  static defaultProps = {
+    action: 'create',
+  };
+
+  _isCreateModal = () => {
     return this.props.action === 'create';
-  },
-  openModal() {
-    this.refs.modal.open();
-  },
+  };
+
+  openModal = () => {
+    this.modal.open();
+  };
+
   render() {
     let triggerButtonContent;
 
@@ -32,10 +35,10 @@ const EditDashboardModalTrigger = React.createClass({
                 className={`btn ${this.props.buttonClass}`}>
           {triggerButtonContent}
         </button>
-        <EditDashboardModal ref="modal" {...this.props} />
+        <EditDashboardModal ref={(modal) => { this.modal = modal; }} {...this.props} />
       </span>
     );
-  },
-});
+  }
+}
 
 export default EditDashboardModalTrigger;

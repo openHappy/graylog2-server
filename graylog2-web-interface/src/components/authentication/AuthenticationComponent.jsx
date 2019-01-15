@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { Alert, Nav, NavItem, Row, Col } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
@@ -18,13 +20,13 @@ const CurrentUserStore = StoreProvider.getStore('CurrentUser');
 
 import AuthenticationComponentStyle from '!style!css!./AuthenticationComponent.css';
 
-const AuthenticationComponent = React.createClass({
+const AuthenticationComponent = createReactClass({
+  displayName: 'AuthenticationComponent',
 
   propTypes: {
-    location: React.PropTypes.object.isRequired,
-    params: React.PropTypes.object.isRequired,
-    history: React.PropTypes.object.isRequired,
-    children: React.PropTypes.element,
+    location: PropTypes.object.isRequired,
+    params: PropTypes.object.isRequired,
+    children: PropTypes.element,
   },
 
   mixins: [Reflux.connect(AuthenticationStore), Reflux.connect(CurrentUserStore), PermissionsMixin],
@@ -48,7 +50,6 @@ const AuthenticationComponent = React.createClass({
     if (auth) {
       return React.createElement(auth.component, {
         key: `auth-configuration-${name}`,
-        history: this.props.history,
       });
     }
     return (<Alert bsStyle="danger">Plugin component missing for authenticator <code>{name}</code>, this is an error.</Alert>);
@@ -65,8 +66,7 @@ const AuthenticationComponent = React.createClass({
     if (this.props.params.name === undefined) {
       return (<AuthProvidersConfig config={this.state.authenticators}
                                    descriptors={this.authenticatorConfigurations}
-                                   updateConfig={this._onUpdateProviders}
-                                   history={this.props.history} />);
+                                   updateConfig={this._onUpdateProviders} />);
     }
     return this._pluginPane();
   },
@@ -117,9 +117,14 @@ const AuthenticationComponent = React.createClass({
 
     if (authenticators.length === 0) {
       // special case, this is a user editing their own profile
-      authenticators = [<LinkContainer key="profile-edit" to={Routes.SYSTEM.AUTHENTICATION.USERS.edit(encodeURIComponent(this.state.currentUser.username))}>
-        <NavItem title="Edit User">Edit User</NavItem>
-      </LinkContainer>];
+      authenticators = [
+        <LinkContainer key="profile-edit" to={Routes.SYSTEM.AUTHENTICATION.USERS.edit(encodeURIComponent(this.state.currentUser.username))}>
+          <NavItem title="Edit Profile">Edit Profile</NavItem>
+        </LinkContainer>,
+        <LinkContainer key="profile-edit-tokens" to={Routes.SYSTEM.AUTHENTICATION.USERS.TOKENS.edit(encodeURIComponent(this.state.currentUser.username))}>
+          <NavItem title="Edit Tokens">Edit Tokens</NavItem>
+        </LinkContainer>,
+      ];
     }
     const subnavigation = (
       <Nav stacked bsStyle="pills">

@@ -1,41 +1,36 @@
+import PropTypes from 'prop-types';
 import React from 'react';
-import LinkedStateMixin from 'react-addons-linked-state-mixin';
 import BootstrapModalForm from 'components/bootstrap/BootstrapModalForm';
 import { Input } from 'components/bootstrap';
 import { Select, Spinner } from 'components/common';
 import CombinedProvider from 'injection/CombinedProvider';
+import FormsUtils from 'util/FormsUtils';
 
 const { IndexSetsActions } = CombinedProvider.get('IndexSets');
 
-const StreamForm = React.createClass({
-  propTypes: {
-    onSubmit: React.PropTypes.func.isRequired,
-    stream: React.PropTypes.object.isRequired,
-    title: React.PropTypes.string.isRequired,
-    indexSets: React.PropTypes.array.isRequired,
-  },
+class StreamForm extends React.Component {
+  static propTypes = {
+    onSubmit: PropTypes.func.isRequired,
+    stream: PropTypes.object.isRequired,
+    title: PropTypes.string.isRequired,
+    indexSets: PropTypes.array.isRequired,
+  };
 
-  mixins: [LinkedStateMixin],
+  static defaultProps = {
+    stream: {
+      title: '',
+      description: '',
+      remove_matches_from_default_stream: false,
+    },
+  };
 
-  getDefaultProps() {
-    return {
-      stream: {
-        title: '',
-        description: '',
-        remove_matches_from_default_stream: false,
-      },
-    };
-  },
+  modal = undefined;
 
-  getInitialState() {
-    return this._getValuesFromProps(this.props);
-  },
-
-  _resetValues() {
+  _resetValues = () => {
     this.setState(this._getValuesFromProps(this.props));
-  },
+  };
 
-  _getValuesFromProps(props) {
+  _getValuesFromProps = (props) => {
     let defaultIndexSetId = props.stream.index_set_id;
     if (!defaultIndexSetId && props.indexSets && props.indexSets.length > 0) {
       const defaultIndexSet = props.indexSets.find(indexSet => indexSet.default);
@@ -47,75 +42,104 @@ const StreamForm = React.createClass({
     return {
       title: props.stream.title,
       description: props.stream.description,
-      remove_matches_from_default_stream: props.stream.remove_matches_from_default_stream,
-      index_set_id: defaultIndexSetId,
+      removeMatchesFromDefaultStream: props.stream.remove_matches_from_default_stream,
+      indexSetId: defaultIndexSetId,
     };
-  },
+  };
 
-  _onSubmit() {
+  _onSubmit = () => {
     this.props.onSubmit(this.props.stream.id,
       {
         title: this.state.title,
         description: this.state.description,
-        remove_matches_from_default_stream: this.state.remove_matches_from_default_stream,
-        index_set_id: this.state.index_set_id,
+        remove_matches_from_default_stream: this.state.removeMatchesFromDefaultStream,
+        index_set_id: this.state.indexSetId,
       });
-    this.refs.modal.close();
-  },
+    this.modal.close();
+  };
 
-  open() {
+  open = () => {
     this._resetValues();
     IndexSetsActions.list(false);
-    this.refs.modal.open();
-  },
+    this.modal.open();
+  };
 
-  close() {
-    this.refs.modal.close();
-  },
+  close = () => {
+    this.modal.close();
+  };
 
-  _formatSelectOptions() {
+  _formatSelectOptions = () => {
     return this.props.indexSets.filter(indexSet => indexSet.writable).map((indexSet) => {
       return { value: indexSet.id, label: indexSet.title };
     });
-  },
+  };
 
-  _onIndexSetSelect(selection) {
-    this.linkState('index_set_id').requestChange(selection);
-  },
+  _onIndexSetSelect = (selection) => {
+    this.setState({ indexSetId: selection });
+  };
+
+  handleChange = (event) => {
+    const change = {};
+    change[event.target.name] = FormsUtils.getValueFromInput(event.target);
+    this.setState(change);
+  };
+
+  state = this._getValuesFromProps(this.props);
 
   render() {
+    const { title, description, removeMatchesFromDefaultStream, indexSetId } = this.state;
+
     let indexSetSelect;
     if (this.props.indexSets) {
       indexSetSelect = (
-        <div className="form-group">
-          <label>Index Set</label>
-          <Select placeholder="Select index set" options={this._formatSelectOptions()} matchProp="label"
-                  onValueChange={this._onIndexSetSelect} value={this.state.index_set_id} />
-          <p className="help-block">Messages that match this stream will be written to the configured index set.</p>
-        </div>
+        <Input id="index-set-selector"
+               label="Index Set"
+               help="Messages that match this stream will be written to the configured index set.">
+          <Select inputProps={{ id: 'index-set-selector' }}
+                  placeholder="Select index set"
+                  options={this._formatSelectOptions()}
+                  matchProp="label"
+                  onChange={this._onIndexSetSelect}
+                  value={indexSetId} />
+        </Input>
       );
     } else {
       indexSetSelect = <Spinner>Loading index sets...</Spinner>;
     }
 
     return (
-      <BootstrapModalForm ref="modal"
+      <BootstrapModalForm ref={(c) => { this.modal = c; }}
                           title={this.props.title}
                           onSubmitForm={this._onSubmit}
                           submitButtonText="Save">
-        <Input id="Title" type="text" required label="Title" name="Title"
+        <Input id="Title"
+               type="text"
+               required
+               label="Title"
+               name="title"
+               value={title}
+               onChange={this.handleChange}
                placeholder="A descriptive name of the new stream"
-               valueLink={this.linkState('title')} autoFocus />
-        <Input id="Description" type="text" required label="Description" name="Description"
-               placeholder="What kind of messages are routed into this stream?"
-               valueLink={this.linkState('description')} />
+               autoFocus />
+        <Input id="Description"
+               type="text"
+               required
+               label="Description"
+               name="description"
+               value={description}
+               onChange={this.handleChange}
+               placeholder="What kind of messages are routed into this stream?" />
         {indexSetSelect}
-        <Input id="RemoveFromDefaultStream" type="checkbox" label="Remove matches from 'All messages' stream" name="Remove from All messages"
-               help={<span>Remove messages that match this stream from the 'All messages' stream which is assigned to every message by default.</span>}
-               checkedLink={this.linkState('remove_matches_from_default_stream')} />
+        <Input id="RemoveFromDefaultStream"
+               type="checkbox"
+               label="Remove matches from &lsquo;All messages&rsquo; stream"
+               name="removeMatchesFromDefaultStream"
+               checked={removeMatchesFromDefaultStream}
+               onChange={this.handleChange}
+               help={<span>Remove messages that match this stream from the &lsquo;All messages&rsquo; stream which is assigned to every message by default.</span>} />
       </BootstrapModalForm>
     );
-  },
-});
+  }
+}
 
 export default StreamForm;

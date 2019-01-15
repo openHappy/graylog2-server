@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import { Input } from 'components/bootstrap';
 import { PluginStore } from 'graylog-web-plugin/plugin';
 
@@ -10,11 +12,13 @@ import FormsUtils from 'util/FormsUtils';
 
 import BootstrapModalForm from 'components/bootstrap/BootstrapModalForm';
 
-const WidgetEditConfigModal = React.createClass({
+const WidgetEditConfigModal = createReactClass({
+  displayName: 'WidgetEditConfigModal',
+
   propTypes: {
-    onModalHidden: React.PropTypes.func,
-    onUpdate: React.PropTypes.func.isRequired,
-    widget: React.PropTypes.object.isRequired,
+    onModalHidden: PropTypes.func,
+    onUpdate: PropTypes.func.isRequired,
+    widget: PropTypes.object.isRequired,
   },
 
   getInitialState() {
@@ -37,11 +41,11 @@ const WidgetEditConfigModal = React.createClass({
   },
 
   open() {
-    this.refs.editModal.open();
+    this.editModal.open();
   },
 
   hide() {
-    this.refs.editModal.close();
+    this.editModal.close();
   },
 
   _getWidgetData() {
@@ -138,7 +142,8 @@ const WidgetEditConfigModal = React.createClass({
 
   _getTimeRangeFormControls() {
     const rangeTypeSelector = (
-      <Input type="text"
+      <Input id="timerange-type"
+             type="text"
              label="Time range type"
              disabled
              value={StringUtils.capitalizeFirstLetter(this.state.config.timerange.type)}
@@ -220,9 +225,10 @@ const WidgetEditConfigModal = React.createClass({
 
     return null;
   },
+
   render() {
     return (
-      <BootstrapModalForm ref="editModal"
+      <BootstrapModalForm ref={(editModal) => { this.editModal = editModal; }}
                           title={`Edit widget "${this.state.description}"`}
                           onSubmitForm={this.save}
                           onModalClose={this.props.onModalHidden}

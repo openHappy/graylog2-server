@@ -1,12 +1,14 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Table } from 'react-bootstrap';
 
 import { SystemMessage } from 'components/systemmessages';
 
-const SystemMessagesList = React.createClass({
-  propTypes: {
-    messages: React.PropTypes.arrayOf(React.PropTypes.object).isRequired,
-  },
+class SystemMessagesList extends React.Component {
+  static propTypes = {
+    messages: PropTypes.arrayOf(PropTypes.object).isRequired,
+  };
+
   render() {
     return (
       <Table className="system-messages" striped hover condensed>
@@ -23,7 +25,7 @@ const SystemMessagesList = React.createClass({
         </tbody>
       </Table>
     );
-  },
-});
+  }
+}
 
 export default SystemMessagesList;

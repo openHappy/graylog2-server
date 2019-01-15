@@ -1,5 +1,7 @@
 import $ from 'jquery';
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import ReactDOM from 'react-dom';
 import Immutable from 'immutable';
 import { Button, ButtonToolbar, DropdownButton, MenuItem, Alert } from 'react-bootstrap';
@@ -23,13 +25,15 @@ import UIUtils from 'util/UIUtils';
 import DateTime from 'logic/datetimes/DateTime';
 import moment from 'moment';
 
-const SearchBar = React.createClass({
+const SearchBar = createReactClass({
+  displayName: 'SearchBar',
+
   propTypes: {
-    userPreferences: React.PropTypes.object,
-    savedSearches: React.PropTypes.arrayOf(React.PropTypes.object).isRequired,
-    config: React.PropTypes.object,
-    displayRefreshControls: React.PropTypes.bool,
-    onExecuteSearch: React.PropTypes.func,
+    userPreferences: PropTypes.object,
+    savedSearches: PropTypes.arrayOf(PropTypes.object).isRequired,
+    config: PropTypes.object,
+    displayRefreshControls: PropTypes.bool,
+    onExecuteSearch: PropTypes.func,
   },
 
   getDefaultProps() {
@@ -48,6 +52,7 @@ const SearchBar = React.createClass({
       keywordPreview: Immutable.Map(),
     };
   },
+
   componentDidMount() {
     SearchStore.onParamsChanged = newParams => this.setState(newParams);
     SearchStore.onSubmitSearch = () => {
@@ -56,56 +61,69 @@ const SearchBar = React.createClass({
     SearchStore.onAddQueryTerm = this._animateQueryChange;
     this._initializeSearchQueryInput();
   },
+
   componentDidUpdate(prevProps, prevState) {
     if (this.state.query !== prevState.query) {
       this._updateSearchQueryInput(this.state.query);
     }
   },
+
   componentWillUnmount() {
     this._removeSearchQueryInput();
   },
+
+  inputs: {},
+
   reload() {
     this.setState(this.getInitialState());
   },
+
   _initializeSearchQueryInput() {
     if (this.props.userPreferences.enableSmartSearch) {
-      this.queryInput = new QueryInput(this.refs.query.getInputDOMNode());
+      this.queryInput = new QueryInput(this.query.getInputDOMNode());
       this.queryInput.display();
       // We need to update on changes made on typeahead
-      const queryDOMElement = ReactDOM.findDOMNode(this.refs.query);
+      const queryDOMElement = ReactDOM.findDOMNode(this.query);
       $(queryDOMElement).on('typeahead:change', (event) => {
         SearchStore.query = event.target.value;
       });
     }
   },
+
   _updateSearchQueryInput(value) {
     if (this.props.userPreferences.enableSmartSearch) {
       this.queryInput.update(value);
     }
   },
+
   _removeSearchQueryInput() {
     if (this.props.userPreferences.enableSmartSearch) {
-      const queryDOMElement = ReactDOM.findDOMNode(this.refs.query);
+      const queryDOMElement = ReactDOM.findDOMNode(this.query);
       $(queryDOMElement).off('typeahead:change');
     }
   },
+
   _closeSearchQueryAutoCompletion() {
     if (this.props.userPreferences.enableSmartSearch) {
-      const queryDOMElement = ReactDOM.findDOMNode(this.refs.query.getInputDOMNode());
+      const queryDOMElement = ReactDOM.findDOMNode(this.query.getInputDOMNode());
       $(queryDOMElement).typeahead('close');
     }
   },
+
   _animateQueryChange() {
-    UIUtils.scrollToHint(ReactDOM.findDOMNode(this.refs.universalSearch));
-    $(ReactDOM.findDOMNode(this.refs.query)).effect('bounce');
+    UIUtils.scrollToHint(ReactDOM.findDOMNode(this.universalSearch));
+    $(ReactDOM.findDOMNode(this.query)).effect('bounce');
   },
+
   _queryChanged() {
-    SearchStore.query = this.refs.query.getValue();
+    SearchStore.query = this.query.getValue();
   },
+
   _rangeTypeChanged(newRangeType, event) {
     SearchStore.rangeType = newRangeType;
     this._resetKeywordPreview();
   },
+
   _rangeParamsChanged(key) {
     return () => {
       let refInput;
@@ -115,7 +133,7 @@ const SearchBar = React.createClass({
         case 'from':
         case 'to':
           const ref = `${key}Formatted`;
-          refInput = this.refs[ref];
+          refInput = this.inputs[ref];
           if (!this._isValidDateString(refInput.getValue())) {
             refInput.getInputDOMNode().setCustomValidity('Invalid date time provided');
           } else {
@@ -123,15 +141,16 @@ const SearchBar = React.createClass({
           }
           break;
         default:
-          refInput = this.refs[key];
+          refInput = this.inputs[key];
       }
       /* eslint-enable no-case-declarations */
       SearchStore.rangeParams = this.state.rangeParams.set(key, refInput.getValue());
     };
   },
+
   _keywordSearchChanged() {
     this._rangeParamsChanged('keyword')();
-    const value = this.refs.keyword.getValue();
+    const value = this.inputs['keyword'].getValue();
 
     if (value === '') {
       this._resetKeywordPreview();
@@ -141,14 +160,17 @@ const SearchBar = React.createClass({
         .catch(() => this._resetKeywordPreview());
     }
   },
+
   _resetKeywordPreview() {
     this.setState({ keywordPreview: Immutable.Map() });
   },
+
   _onKeywordPreviewLoaded(data) {
     const from = DateTime.fromUTCDateTime(data.from).toString();
     const to = DateTime.fromUTCDateTime(data.to).toString();
     this.setState({ keywordPreview: Immutable.Map({ from: from, to: to }) });
   },
+
   _formattedDateStringInUserTZ(field) {
     const dateString = this.state.rangeParams.get(field);
 
@@ -164,16 +186,19 @@ const SearchBar = React.createClass({
 
     return dateString;
   },
+
   _setDateTimeToNow(field) {
     return () => {
-      const inputNode = this.refs[`${field}Formatted`].getInputDOMNode();
+      const inputNode = this.inputs[`${field}Formatted`].getInputDOMNode();
       inputNode.value = new DateTime().toString(DateTime.Formats.DATETIME);
       this._rangeParamsChanged(field)();
     };
   },
+
   _isValidDateField(field) {
     return this._isValidDateString(this._formattedDateStringInUserTZ(field));
   },
+
   _isValidDateString(dateString) {
     try {
       if (dateString !== undefined) {
@@ -184,6 +209,7 @@ const SearchBar = React.createClass({
       return false;
     }
   },
+
   _performSearch(event) {
     if (event) {
       event.preventDefault();
@@ -193,8 +219,8 @@ const SearchBar = React.createClass({
 
     // Convert from and to values to UTC
     if (this.state.rangeType === 'absolute') {
-      const fromInput = this.refs.fromFormatted.getValue();
-      const toInput = this.refs.toFormatted.getValue();
+      const fromInput = this.inputs.fromFormatted.getValue();
+      const toInput = this.inputs.toFormatted.getValue();
 
       this.from.value = DateTime.parseFromString(fromInput).toISOString();
       this.to.value = DateTime.parseFromString(toInput).toISOString();
@@ -204,7 +230,7 @@ const SearchBar = React.createClass({
     this.width.value = SearchStore.width;
     this.highlightMessage.value = SearchStore.highlightMessage;
 
-    const searchForm = this.refs.searchForm;
+    const searchForm = this.searchForm;
     const searchQuery = $(searchForm).serialize();
     const searchURI = new URI(searchForm.action).search(searchQuery);
     const resource = searchURI.resource();
@@ -214,6 +240,7 @@ const SearchBar = React.createClass({
       this.props.onExecuteSearch(resource);
     }
   },
+
   _onSavedSearchSelect(searchId) {
     if (searchId === '') {
       this._performSearch();
@@ -224,7 +251,7 @@ const SearchBar = React.createClass({
 
   _onDateSelected(field) {
     return (date, _, event) => {
-      const inputField = this.refs[`${field}Formatted`].getInputDOMNode();
+      const inputField = this.inputs[`${field}Formatted`].getInputDOMNode();
       const midnightDate = date.setHours(0);
       inputField.value = DateTime.ignoreTZ(midnightDate).toString(DateTime.Formats.DATETIME);
       this._rangeParamsChanged(field)();
@@ -270,7 +297,7 @@ const SearchBar = React.createClass({
           <div className="timerange-selector relative"
                style={{ width: 270, marginLeft: 50 }}>
             <Input id="relative-timerange-selector"
-                   ref="relative"
+                   ref={(relative) => { this.inputs['relative'] = relative; }}
                    type="select"
                    value={this.state.rangeParams.get('relative')}
                    name="relative"
@@ -293,7 +320,8 @@ const SearchBar = React.createClass({
                             date={this.state.rangeParams.get('from')}
                             onChange={this._onDateSelected('from')}>
                   <Input type="text"
-                         ref="fromFormatted"
+                         ref={(fromFormatted) => { this.inputs['fromFormatted'] = fromFormatted; }}
+                         id="timerange-absolute-from"
                          value={this._formattedDateStringInUserTZ('from')}
                          onChange={this._rangeParamsChanged('from')}
                          placeholder={DateTime.Formats.DATETIME}
@@ -314,7 +342,8 @@ const SearchBar = React.createClass({
                             date={this.state.rangeParams.get('to')}
                             onChange={this._onDateSelected('to')}>
                   <Input type="text"
-                         ref="toFormatted"
+                         ref={(toFormatted) => { this.inputs['toFormatted'] = toFormatted; }}
+                         id="timerange-absolute-to"
                          value={this._formattedDateStringInUserTZ('to')}
                          onChange={this._rangeParamsChanged('to')}
                          placeholder={DateTime.Formats.DATETIME}
@@ -335,7 +364,8 @@ const SearchBar = React.createClass({
             <div className="row no-bm" style={{ marginLeft: 50 }}>
               <div className="col-md-5" style={{ padding: 0 }}>
                 <Input type="text"
-                       ref="keyword"
+                       ref={(keyword) => { this.inputs['keyword'] = keyword; }}
+                       id="timerange-keyword"
                        name="keyword"
                        value={this.state.rangeParams.get('keyword')}
                        onChange={this._keywordSearchChanged}
@@ -372,7 +402,7 @@ const SearchBar = React.createClass({
 
     return (
       <Select placeholder="Saved searches" options={formattedSavedSearches} value={this.state.savedSearch}
-              onValueChange={this._onSavedSearchSelect} size="small" />
+              onChange={this._onSavedSearchSelect} size="small" />
     );
   },
 
@@ -381,12 +411,13 @@ const SearchBar = React.createClass({
       <div className="row no-bm">
         <div className="col-md-12" id="universalsearch-container">
           <div className="row no-bm">
-            <div ref="universalSearch" className="col-md-12" id="universalsearch">
-              <form ref="searchForm"
+            <div ref={(universalSearch) => { this.universalSearch = universalSearch; }} className="col-md-12" id="universalsearch">
+              <form ref={(searchForm) => { this.searchForm = searchForm; }}
                     className="universalsearch-form"
                     action={SearchStore.searchBaseLocation('index')}
                     method="GET"
                     onSubmit={this._performSearch}>
+                {this.state.savedSearch && <input type="hidden" name="saved" value={this.state.savedSearch} />}
                 <input type="hidden" name="rangetype" value={this.state.rangeType} />
                 <input type="hidden" ref={(ref) => { this.fields = ref; }} name="fields" value="" />
                 <input type="hidden" ref={(ref) => { this.width = ref; }} name="width" value="" />
@@ -446,7 +477,8 @@ const SearchBar = React.createClass({
 
                   <div className="query">
                     <Input type="text"
-                           ref="query"
+                           ref={(query) => { this.query = query; }}
+                           id="search-field"
                            name="q"
                            value={this.state.query}
                            onChange={this._queryChanged}

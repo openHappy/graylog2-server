@@ -1,5 +1,7 @@
-import React, { PropTypes } from 'react';
-import { Button } from 'react-bootstrap';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
+import { Button, Col, Row } from 'react-bootstrap';
 
 import { Input } from 'components/bootstrap';
 import StoreProvider from 'injection/StoreProvider';
@@ -9,29 +11,37 @@ import UserNotification from 'util/UserNotification';
 import ExtractorUtils from 'util/ExtractorUtils';
 import FormUtils from 'util/FormsUtils';
 
-const SubstringExtractorConfiguration = React.createClass({
+const SubstringExtractorConfiguration = createReactClass({
+  displayName: 'SubstringExtractorConfiguration',
+
   propTypes: {
     configuration: PropTypes.object.isRequired,
     exampleMessage: PropTypes.string,
     onChange: PropTypes.func.isRequired,
     onExtractorPreviewLoad: PropTypes.func.isRequired,
   },
+
   getInitialState() {
     return {
       trying: false,
       configuration: this._getEffectiveConfiguration(this.props.configuration),
     };
   },
+
   componentDidMount() {
     this.props.onChange(this.state.configuration);
   },
+
   componentWillReceiveProps(nextProps) {
     this.setState({ configuration: this._getEffectiveConfiguration(nextProps.configuration) });
   },
+
   DEFAULT_CONFIGURATION: { begin_index: 0, end_index: 1 },
+
   _getEffectiveConfiguration(configuration) {
     return ExtractorUtils.getEffectiveConfiguration(this.DEFAULT_CONFIGURATION, configuration);
   },
+
   _onChange(key) {
     return (event) => {
       this.props.onExtractorPreviewLoad(undefined);
@@ -40,9 +50,10 @@ const SubstringExtractorConfiguration = React.createClass({
       this.props.onChange(newConfig);
     };
   },
+
   _verifySubstringInputs() {
-    const beginIndex = this.refs.beginIndex.getInputDOMNode();
-    const endIndex = this.refs.endIndex.getInputDOMNode();
+    const beginIndex = this.beginIndex.getInputDOMNode();
+    const endIndex = this.endIndex.getInputDOMNode();
 
     if (this.state.configuration.begin_index === undefined || this.state.configuration.begin_index < 0) {
       beginIndex.value = 0;
@@ -59,6 +70,7 @@ const SubstringExtractorConfiguration = React.createClass({
       this._onChange('begin_index')({ target: beginIndex });
     }
   },
+
   _onTryClick() {
     this.setState({ trying: true });
 
@@ -82,10 +94,12 @@ const SubstringExtractorConfiguration = React.createClass({
       promise.finally(() => this.setState({ trying: false }));
     }
   },
+
   _isTryButtonDisabled() {
     const configuration = this.state.configuration;
     return this.state.trying || configuration.begin_index === undefined || configuration.begin_index < 0 || configuration.end_index === undefined || configuration.end_index < 0 || !this.props.exampleMessage;
   },
+
   render() {
     const endIndexHelpMessage = (
       <span>
@@ -96,7 +110,7 @@ const SubstringExtractorConfiguration = React.createClass({
     return (
       <div>
         <Input type="number"
-               ref="beginIndex"
+               ref={(beginIndex) => { this.beginIndex = beginIndex; }}
                id="begin_index"
                label="Begin index"
                labelClassName="col-md-2"
@@ -108,7 +122,7 @@ const SubstringExtractorConfiguration = React.createClass({
                help="Character position from where to start extracting. (Inclusive)" />
 
         <Input type="number"
-               ref="endIndex"
+               ref={(endIndex) => { this.endIndex = endIndex; }}
                id="end_index"
                label="End index"
                labelClassName="col-md-2"
@@ -119,11 +133,13 @@ const SubstringExtractorConfiguration = React.createClass({
                required
                help={endIndexHelpMessage} />
 
-        <Input wrapperClassName="col-md-offset-2 col-md-10">
-          <Button bsStyle="info" onClick={this._onTryClick} disabled={this._isTryButtonDisabled()}>
-            {this.state.trying ? <i className="fa fa-spin fa-spinner" /> : 'Try'}
-          </Button>
-        </Input>
+        <Row>
+          <Col mdOffset={2} md={10}>
+            <Button bsStyle="info" onClick={this._onTryClick} disabled={this._isTryButtonDisabled()}>
+              {this.state.trying ? <i className="fa fa-spin fa-spinner" /> : 'Try'}
+            </Button>
+          </Col>
+        </Row>
       </div>
     );
   },

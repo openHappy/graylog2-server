@@ -1,6 +1,7 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import _ from 'lodash';
-import { Button } from 'react-bootstrap';
+import { Button, Col, Row } from 'react-bootstrap';
 import { Input } from 'components/bootstrap';
 import ObjectUtils from 'util/ObjectUtils';
 import FormsUtils from 'util/FormsUtils';
@@ -12,45 +13,39 @@ import CombinedProvider from 'injection/CombinedProvider';
 
 const { LookupTablesActions } = CombinedProvider.get('LookupTables');
 
-const LookupTableForm = React.createClass({
-  propTypes: {
+class LookupTableForm extends React.Component {
+  static propTypes = {
     saved: PropTypes.func.isRequired,
     create: PropTypes.bool,
     table: PropTypes.object,
     validate: PropTypes.func,
     validationErrors: PropTypes.object,
-  },
+  };
 
-  getDefaultProps() {
-    return {
-      create: true,
-      table: {
-        id: undefined,
-        title: '',
-        description: '',
-        name: '',
-        cache_id: undefined,
-        data_adapter_id: undefined,
-        default_single_value: '',
-        default_single_value_type: 'NULL',
-        default_multi_value: '',
-        default_multi_value_type: 'NULL',
-      },
-      validate: null,
-      validationErrors: {},
-    };
-  },
-
-  getInitialState() {
-    return this._initialState(this.props.table);
-  },
+  static defaultProps = {
+    create: true,
+    table: {
+      id: undefined,
+      title: '',
+      description: '',
+      name: '',
+      cache_id: undefined,
+      data_adapter_id: undefined,
+      default_single_value: '',
+      default_single_value_type: 'NULL',
+      default_multi_value: '',
+      default_multi_value_type: 'NULL',
+    },
+    validate: null,
+    validationErrors: {},
+  };
 
   componentDidMount() {
     if (!this.props.create) {
       // Validate when mounted to immediately show errors for invalid objects
       this._validate(this.props.table);
     }
-  },
+  }
 
   componentWillReceiveProps(nextProps) {
     if (_.isEqual(this.props.table, nextProps.table)) {
@@ -58,22 +53,22 @@ const LookupTableForm = React.createClass({
       return;
     }
     this.setState(this._initialState(nextProps.table));
-  },
+  }
 
   componentWillUnmount() {
     this._clearTimer();
-  },
+  }
 
-  validationCheckTimer: undefined,
+  validationCheckTimer = undefined;
 
-  _clearTimer() {
+  _clearTimer = () => {
     if (this.validationCheckTimer !== undefined) {
       clearTimeout(this.validationCheckTimer);
       this.validationCheckTimer = undefined;
     }
-  },
+  };
 
-  _validate(table) {
+  _validate = (table) => {
     if (!table.cache_id || !table.data_adapter_id) {
       return;
     }
@@ -82,9 +77,9 @@ const LookupTableForm = React.createClass({
     if (this.props.validate) {
       this.validationCheckTimer = setTimeout(() => this.props.validate(table), 500);
     }
-  },
+  };
 
-  _initialState(t) {
+  _initialState = (t) => {
     const table = ObjectUtils.clone(t);
 
     return {
@@ -103,23 +98,23 @@ const LookupTableForm = React.createClass({
       enable_default_single: table.default_single_value_type && table.default_single_value_type !== 'NULL',
       enable_default_multi: table.default_multi_value_type && table.default_multi_value_type !== 'NULL',
     };
-  },
+  };
 
-  _onChange(event) {
+  _onChange = (event) => {
     const table = ObjectUtils.clone(this.state.table);
     table[event.target.name] = FormsUtils.getValueFromInput(event.target);
     this._validate(table);
     this.setState({ table: table });
-  },
+  };
 
-  _onConfigChange(event) {
+  _onConfigChange = (event) => {
     const table = ObjectUtils.clone(this.state.table);
     table.config[event.target.name] = FormsUtils.getValueFromInput(event.target);
     this._validate(table);
     this.setState({ table: table });
-  },
+  };
 
-  _save(event) {
+  _save = (event) => {
     if (event) {
       event.preventDefault();
     }
@@ -134,23 +129,23 @@ const LookupTableForm = React.createClass({
     promise.then(() => {
       this.props.saved();
     });
-  },
+  };
 
-  _onAdapterSelect(id) {
+  _onAdapterSelect = (id) => {
     const table = ObjectUtils.clone(this.state.table);
     table.data_adapter_id = id;
     this._validate(table);
     this.setState({ table: table });
-  },
+  };
 
-  _onCacheSelect(id) {
+  _onCacheSelect = (id) => {
     const table = ObjectUtils.clone(this.state.table);
     table.cache_id = id;
     this._validate(table);
     this.setState({ table: table });
-  },
+  };
 
-  _onDefaultValueUpdate(name, value, valueType) {
+  _onDefaultValueUpdate = (name, value, valueType) => {
     const table = ObjectUtils.clone(this.state.table);
 
     table[`default_${name}_value`] = value;
@@ -158,42 +153,42 @@ const LookupTableForm = React.createClass({
 
     this._validate(table);
     this.setState({ table: table });
-  },
+  };
 
-  _onCheckEnableSingleDefault(e) {
+  _onCheckEnableSingleDefault = (e) => {
     const value = FormsUtils.getValueFromInput(e.target);
     this.setState({ enable_default_single: value });
 
     if (value === false) {
       this._onDefaultValueUpdate('single', '', 'NULL');
     }
-  },
+  };
 
-  _onCheckEnableMultiDefault(e) {
+  _onCheckEnableMultiDefault = (e) => {
     const value = FormsUtils.getValueFromInput(e.target);
     this.setState({ enable_default_multi: value });
 
     if (value === false) {
       this._onDefaultValueUpdate('multi', '', 'NULL');
     }
-  },
+  };
 
-  _onDefaultSingleValueUpdate(value, valueType) {
+  _onDefaultSingleValueUpdate = (value, valueType) => {
     this._onDefaultValueUpdate('single', value, valueType);
-  },
+  };
 
-  _onDefaultMultiValueUpdate(value, valueType) {
+  _onDefaultMultiValueUpdate = (value, valueType) => {
     this._onDefaultValueUpdate('multi', value, valueType);
-  },
+  };
 
-  _validationState(fieldName) {
+  _validationState = (fieldName) => {
     if (this.props.validationErrors[fieldName]) {
       return 'error';
     }
     return null;
-  },
+  };
 
-  _validationMessage(fieldName, defaultText) {
+  _validationMessage = (fieldName, defaultText) => {
     if (this.props.validationErrors[fieldName]) {
       return (<div>
         <span>{defaultText}</span>
@@ -202,7 +197,9 @@ const LookupTableForm = React.createClass({
       </div>);
     }
     return <span>{defaultText}</span>;
-  },
+  };
+
+  state = this._initialState(this.props.table);
 
   render() {
     const table = this.state.table;
@@ -294,13 +291,15 @@ const LookupTableForm = React.createClass({
         </CachesContainer>
 
         <fieldset>
-          <Input wrapperClassName="col-sm-offset-3 col-sm-9">
-            <Button type="submit" bsStyle="success">{this.props.create ? 'Create Lookup Table' : 'Update Lookup Table'}</Button>
-          </Input>
+          <Row>
+            <Col mdOffset={3} md={9}>
+              <Button type="submit" bsStyle="success">{this.props.create ? 'Create Lookup Table' : 'Update Lookup Table'}</Button>
+            </Col>
+          </Row>
         </fieldset>
       </form>
     );
-  },
-});
+  }
+}
 
 export default LookupTableForm;

@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { LinkContainer } from 'react-router-bootstrap';
 import { Row, Col, Button } from 'react-bootstrap';
 
@@ -13,15 +14,16 @@ import InputTypesDataTable from './InputTypesDataTable';
 
 import Routes from 'routing/Routes';
 
-const NodeOverview = React.createClass({
-  propTypes: {
+class NodeOverview extends React.Component {
+  static propTypes = {
     node: PropTypes.object.isRequired,
     systemOverview: PropTypes.object.isRequired,
     jvmInformation: PropTypes.object,
     plugins: PropTypes.array,
     inputDescriptions: PropTypes.object,
     inputStates: PropTypes.array,
-  },
+  };
+
   render() {
     const node = this.props.node;
     const systemOverview = this.props.systemOverview;
@@ -118,7 +120,7 @@ const NodeOverview = React.createClass({
         </Row>
       </div>
     );
-  },
-});
+  }
+}
 
 export default NodeOverview;

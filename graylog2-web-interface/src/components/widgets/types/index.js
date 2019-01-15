@@ -4,6 +4,7 @@ import {
   HistogramVisualization,
   NumericVisualization,
   QuickValuesVisualization,
+  QuickValuesHistogramVisualization,
   StackedGraphVisualization } from 'components/visualizations';
 import {
   CountWidgetCreateConfiguration,
@@ -11,17 +12,20 @@ import {
   FieldChartWidgetConfiguration,
   QuickValuesWidgetCreateConfiguration,
   QuickValuesWidgetEditConfiguration,
+  QuickValuesHistogramWidgetCreateConfiguration,
+  QuickValuesHistogramWidgetEditConfiguration,
   StackedChartWidgetConfiguration,
   StatisticalCountWidgetCreateConfiguration,
   StatisticalCountWidgetEditConfiguration } from 'components/widgets/configurations';
+import {} from 'components/maps/widgets';
 
 PluginStore.register(new PluginManifest({}, {
   widgets: [
     {
       type: 'SEARCH_RESULT_COUNT',
       displayName: 'Search result count',
-      defaultHeight: 1,
-      defaultWidth: 1,
+      defaultHeight: 2,
+      defaultWidth: 2,
       visualizationComponent: NumericVisualization,
       configurationCreateComponent: CountWidgetCreateConfiguration,
       configurationEditComponent: CountWidgetEditConfiguration,
@@ -29,8 +33,8 @@ PluginStore.register(new PluginManifest({}, {
     {
       type: 'STREAM_SEARCH_RESULT_COUNT',
       displayName: 'Stream search result count',
-      defaultHeight: 1,
-      defaultWidth: 1,
+      defaultHeight: 2,
+      defaultWidth: 2,
       visualizationComponent: NumericVisualization,
       configurationCreateComponent: CountWidgetCreateConfiguration,
       configurationEditComponent: CountWidgetEditConfiguration,
@@ -38,8 +42,8 @@ PluginStore.register(new PluginManifest({}, {
     {
       type: 'STATS_COUNT',
       displayName: 'Statistical value',
-      defaultHeight: 1,
-      defaultWidth: 1,
+      defaultHeight: 2,
+      defaultWidth: 2,
       visualizationComponent: NumericVisualization,
       configurationCreateComponent: StatisticalCountWidgetCreateConfiguration,
       configurationEditComponent: StatisticalCountWidgetEditConfiguration,
@@ -47,32 +51,41 @@ PluginStore.register(new PluginManifest({}, {
     {
       type: 'SEARCH_RESULT_CHART',
       displayName: 'Search result graph',
-      defaultHeight: 1,
-      defaultWidth: 2,
+      defaultHeight: 2,
+      defaultWidth: 4,
       visualizationComponent: HistogramVisualization,
     },
     {
       type: 'QUICKVALUES',
       displayName: 'Quick values',
-      defaultHeight: 3,
-      defaultWidth: 1,
+      defaultHeight: 6,
+      defaultWidth: 2,
       visualizationComponent: QuickValuesVisualization,
       configurationCreateComponent: QuickValuesWidgetCreateConfiguration,
       configurationEditComponent: QuickValuesWidgetEditConfiguration,
     },
     {
+      type: 'QUICKVALUES_HISTOGRAM',
+      displayName: 'Quick values histogram',
+      defaultHeight: 2,
+      defaultWidth: 4,
+      visualizationComponent: QuickValuesHistogramVisualization,
+      configurationCreateComponent: QuickValuesHistogramWidgetCreateConfiguration,
+      configurationEditComponent: QuickValuesHistogramWidgetEditConfiguration,
+    },
+    {
       type: 'FIELD_CHART',
       displayName: 'Field graph',
-      defaultHeight: 1,
-      defaultWidth: 2,
+      defaultHeight: 2,
+      defaultWidth: 4,
       visualizationComponent: GraphVisualization,
       configurationEditComponent: FieldChartWidgetConfiguration,
     },
     {
       type: 'STACKED_CHART',
       displayName: 'Stacked graph',
-      defaultHeight: 1,
-      defaultWidth: 2,
+      defaultHeight: 2,
+      defaultWidth: 4,
       visualizationComponent: StackedGraphVisualization,
       configurationEditComponent: StackedChartWidgetConfiguration,
     },

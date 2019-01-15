@@ -1,10 +1,11 @@
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Button, Col, Row } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
+import { Col, Row } from 'react-bootstrap';
 
 import DocumentationLink from 'components/support/DocumentationLink';
 import { DocumentTitle, PageHeader } from 'components/common';
+import { AlertsHeaderToolbar } from 'components/alerts';
 import { AlertConditionsComponent } from 'components/alertconditions';
 
 import Routes from 'routing/Routes';
@@ -13,8 +14,10 @@ import DocsHelper from 'util/DocsHelper';
 import StoreProvider from 'injection/StoreProvider';
 const CurrentUserStore = StoreProvider.getStore('CurrentUser');
 
-const AlertConditionsPage = React.createClass({
+const AlertConditionsPage = createReactClass({
+  displayName: 'AlertConditionsPage',
   mixins: [Reflux.connect(CurrentUserStore)],
+
   render() {
     return (
       <DocumentTitle title="Alert conditions">
@@ -30,9 +33,7 @@ const AlertConditionsPage = React.createClass({
             </span>
 
             <span>
-              <LinkContainer to={Routes.ALERTS.NOTIFICATIONS}>
-                <Button bsStyle="info">Manage notifications</Button>
-              </LinkContainer>
+              <AlertsHeaderToolbar active={Routes.ALERTS.CONDITIONS} />
             </span>
           </PageHeader>
 

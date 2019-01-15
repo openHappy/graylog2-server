@@ -1,12 +1,15 @@
 {
   "name": "graylog-web-plugin",
-  "version": "2.2.0-SNAPSHOT",
+  "version": "3.0.0-beta.3-SNAPSHOT",
   "description": "Helper code for streamlining Graylog web interface plugin development",
   "main": "index.js",
   "scripts": {
     "test": "eslint src/*",
-    "compile": "babel -d lib/ src/",
-    "prepublish": "npm i --only=dev --ignore-scripts && npm run compile"
+    "build": "babel -d lib/ src/",
+    "preparebuild": "yarn install --ignore-scripts",
+    "compile": "yarn run preparebuild && yarn run build",
+    "prepublish": "yarn run compile",
+    "preinstall": "test -d src/ && yarn run compile || echo \"src\" folder missing, skipping preinstall"
   },
   "repository": {
     "type": "git",
@@ -23,33 +26,39 @@
     "url": "https://github.com/Graylog2/graylog-web-plugin/issues"
   },
   "homepage": "https://github.com/Graylog2/graylog-web-plugin#readme",
+  "files": [
+    "lib/",
+    "templates/",
+    "index.js",
+    "plugin.js",
+    "README.md"
+  ],
   "dependencies": {
-    "babel-eslint": "^6.1.0",
-    "eslint": "^3.16.1",
+    "@babel/preset-env": "^7.1.0",
+    "babel-eslint": "^9.0.0",
+    "eslint": "^4.3.0",
     "eslint-config-graylog": "file:../eslint-config-graylog",
-    "history": "^1.17.0",
-    "html-webpack-plugin": "^2.22.0",
+    "html-webpack-plugin": "^3.2.0",
     "javascript-natural-sort": "^0.7.1",
-    "jquery": "2.1.x",
-    "moment": "2.14.1",
-    "moment-timezone": "0.5.7",
-    "react": "^0.14.5",
-    "react-addons-linked-state-mixin": "0.14.8",
-    "react-addons-pure-render-mixin": "0.14.8",
-    "react-addons-test-utils": "0.14.8",
-    "react-bootstrap": "^0.30.0",
-    "react-dom": "^0.14.5",
-    "react-router": "~1.0.0",
-    "react-router-bootstrap": "^0.19.0",
+    "jquery": "^3.3.1",
+    "moment": "2.22.2",
+    "moment-timezone": "0.5.23",
+    "prop-types": "^15.5.10",
+    "react": "^16.6.3",
+    "react-addons-pure-render-mixin": "^15.6.0",
+    "react-bootstrap": "^0.31.0",
+    "react-dom": "^16.6.3",
+    "react-router": "^3.2.0",
+    "react-router-bootstrap": "0.23.2",
     "reflux": "^0.2.12",
-    "webpack": "^2.2.0",
-    "webpack-cleanup-plugin": "^0.4.0",
-    "webpack-merge": "0.x.x"
+    "webpack": "^4.19.1",
+    "webpack-cleanup-plugin": "^0.5.0",
+    "webpack-cli": "^3.1.0",
+    "webpack-merge": "^4.1.4"
   },
   "devDependencies": {
-    "babel-cli": "^6.0.0",
-    "babel-plugin-add-module-exports": "^0.2.1",
-    "babel-preset-es2015": "^6.0.0",
-    "babel-preset-stage-0": "^6.0.0"
+    "@babel/cli": "^7.1.0",
+    "@babel/core": "^7.1.0",
+    "babel-plugin-add-module-exports": "^0.2.1"
   }
 }

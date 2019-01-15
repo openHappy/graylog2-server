@@ -1,21 +1,23 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
 import MultiSelect from 'components/common/MultiSelect';
 
-const RolesSelect = React.createClass({
-  propTypes: {
-    userRoles: React.PropTypes.arrayOf(React.PropTypes.string),
-    availableRoles: React.PropTypes.array.isRequired,
-    onValueChange: React.PropTypes.func,
-  },
-  getDefaultProps() {
-    return {
-      userRoles: [],
-    };
-  },
-  getValue() {
-    return this.refs.select.getValue().split(',');
-  },
+class RolesSelect extends React.Component {
+  static propTypes = {
+    userRoles: PropTypes.arrayOf(PropTypes.string),
+    availableRoles: PropTypes.array.isRequired,
+    onValueChange: PropTypes.func,
+  };
+
+  static defaultProps = {
+    userRoles: [],
+  };
+
+  getValue = () => {
+    return this.select.getValue().split(',');
+  };
+
   render() {
     const rolesValue = this.props.userRoles.join(',');
     const rolesOptions = this.props.availableRoles.map((role) => {
@@ -23,14 +25,14 @@ const RolesSelect = React.createClass({
     });
     return (
       <MultiSelect
-        ref="select"
+        ref={(select) => { this.select = select; }}
         options={rolesOptions}
         value={rolesValue}
-        onValueChange={this.props.onValueChange}
+        onChange={this.props.onValueChange}
         placeholder="Choose roles..."
       />
     );
-  },
-});
+  }
+}
 
 export default RolesSelect;

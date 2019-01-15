@@ -1,27 +1,23 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Row, Col } from 'react-bootstrap';
 import { LookupTableForm } from 'components/lookup-tables';
 
-const LookupTableCreate = React.createClass({
-
-  propTypes: {
+class LookupTableCreate extends React.Component {
+  static propTypes = {
     saved: PropTypes.func.isRequired,
     validate: PropTypes.func,
     validationErrors: PropTypes.object,
-  },
+  };
 
-  getDefaultProps() {
-    return {
-      validate: null,
-      validationErrors: {},
-    };
-  },
+  static defaultProps = {
+    validate: null,
+    validationErrors: {},
+  };
 
-  getInitialState() {
-    return {
-      table: undefined,
-    };
-  },
+  state = {
+    table: undefined,
+  };
 
   render() {
     return (
@@ -36,8 +32,7 @@ const LookupTableCreate = React.createClass({
         </Row>
       </div>
     );
-  },
-
-});
+  }
+}
 
 export default LookupTableCreate;

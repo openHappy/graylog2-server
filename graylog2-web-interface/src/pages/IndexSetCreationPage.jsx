@@ -1,4 +1,5 @@
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { LinkContainer } from 'react-router-bootstrap';
 import { Button, Row, Col } from 'react-bootstrap';
@@ -13,14 +14,12 @@ import CombinedProvider from 'injection/CombinedProvider';
 const { IndexSetsStore, IndexSetsActions } = CombinedProvider.get('IndexSets');
 const { IndicesConfigurationStore, IndicesConfigurationActions } = CombinedProvider.get('IndicesConfiguration');
 
+import history from 'util/History';
 import DocsHelper from 'util/DocsHelper';
 import Routes from 'routing/Routes';
 
-const IndexSetCreationPage = React.createClass({
-  propTypes: {
-    history: React.PropTypes.object.isRequired,
-  },
-
+const IndexSetCreationPage = createReactClass({
+  displayName: 'IndexSetCreationPage',
   mixins: [Reflux.connect(IndexSetsStore), Reflux.connect(IndicesConfigurationStore)],
 
   getInitialState() {
@@ -58,7 +57,7 @@ const IndexSetCreationPage = React.createClass({
     const copy = indexSet;
     copy.creation_date = DateTime.now().toISOString();
     IndexSetsActions.create(copy).then(() => {
-      this.props.history.pushState(null, Routes.SYSTEM.INDICES.LIST);
+      history.push(Routes.SYSTEM.INDICES.LIST);
     });
   },
 

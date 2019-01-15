@@ -1,4 +1,6 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 
 import { Spinner } from 'components/common';
@@ -8,11 +10,12 @@ import CombinedProvider from 'injection/CombinedProvider';
 const { LookupTableDataAdaptersActions, LookupTableDataAdaptersStore } = CombinedProvider.get(
   'LookupTableDataAdapters');
 
-const DataAdaptersContainer = React.createClass({
+const DataAdaptersContainer = createReactClass({
+  displayName: 'DataAdaptersContainer',
 
   propTypes: {
     children: PropTypes.oneOfType([
-      PropTypes.arrayOf(React.PropTypes.node),
+      PropTypes.arrayOf(PropTypes.node),
       PropTypes.node,
     ]),
   },

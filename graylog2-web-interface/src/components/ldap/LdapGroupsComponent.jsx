@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import Immutable from 'immutable';
 import { Row, Col, Panel, Button } from 'react-bootstrap';
@@ -13,20 +14,18 @@ import StoreProvider from 'injection/StoreProvider';
 const RolesStore = StoreProvider.getStore('Roles');
 const LdapGroupsStore = StoreProvider.getStore('LdapGroups');
 
-const LdapGroupsComponent = React.createClass({
-  propTypes: {
-    onCancel: React.PropTypes.func.isRequired,
-    onShowConfig: React.PropTypes.func.isRequired,
-  },
+class LdapGroupsComponent extends React.Component {
+  static propTypes = {
+    onCancel: PropTypes.func.isRequired,
+    onShowConfig: PropTypes.func.isRequired,
+  };
 
-  getInitialState() {
-    return {
-      groups: Immutable.Set.of(),
-      roles: Immutable.Set.of(),
-      mapping: Immutable.Map(),
-      groupsErrorMessage: null,
-    };
-  },
+  state = {
+    groups: Immutable.Set.of(),
+    roles: Immutable.Set.of(),
+    mapping: Immutable.Map(),
+    groupsErrorMessage: null,
+  };
 
   componentDidMount() {
     LdapGroupsActions.loadMapping.triggerPromise().then(mapping => this.setState({ mapping: Immutable.Map(mapping) }));
@@ -40,9 +39,9 @@ const LdapGroupsComponent = React.createClass({
         },
       );
     RolesStore.loadRoles().then(roles => this.setState({ roles: Immutable.Set(roles) }));
-  },
+  }
 
-  _updateMapping(event) {
+  _updateMapping = (event) => {
     const role = event.target.value;
     const group = event.target.getAttribute('data-group');
     if (role === '') {
@@ -50,21 +49,21 @@ const LdapGroupsComponent = React.createClass({
     } else {
       this.setState({ mapping: this.state.mapping.set(group, role) });
     }
-  },
+  };
 
-  _saveMapping(event) {
+  _saveMapping = (event) => {
     event.preventDefault();
     LdapGroupsActions.saveMapping(this.state.mapping.toJS());
-  },
+  };
 
-  _onShowConfig(event) {
+  _onShowConfig = (event) => {
     event.preventDefault();
     this.props.onShowConfig();
-  },
+  };
 
-  _isLoading() {
+  _isLoading = () => {
     return !(this.state.mapping && this.state.groups && this.state.roles);
-  },
+  };
 
   render() {
     if (this._isLoading()) {
@@ -88,8 +87,14 @@ const LdapGroupsComponent = React.createClass({
     const content = this.state.groups.sort(naturalSort).map((group) => {
       return (
         <li key={group}>
-          <Input label={group} data-group={group} type="select" value={this.state.mapping.get(group, '')}
-                 onChange={this._updateMapping} labelClassName="col-sm-2" wrapperClassName="col-sm-5">
+          <Input id={`${group}-select`}
+                 label={group}
+                 data-group={group}
+                 type="select"
+                 value={this.state.mapping.get(group, '')}
+                 onChange={this._updateMapping}
+                 labelClassName="col-sm-2"
+                 wrapperClassName="col-sm-5">
             <option value="">None</option>
             {options}
           </Input>
@@ -121,7 +126,7 @@ const LdapGroupsComponent = React.createClass({
         </Row>
       </form>
     );
-  },
-});
+  }
+}
 
 export default LdapGroupsComponent;

@@ -1,32 +1,32 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Button } from 'react-bootstrap';
 import { ConfigurationForm } from 'components/configurationforms';
 
-const EditOutputButton = React.createClass({
-  propTypes: {
+class EditOutputButton extends React.Component {
+  static propTypes = {
     output: PropTypes.object,
     disabled: PropTypes.bool,
     getTypeDefinition: PropTypes.func.isRequired,
     onUpdate: PropTypes.func,
-  },
-  getInitialState() {
-    return {
-      typeDefinition: undefined,
-      typeName: undefined,
-      configurationForm: '',
-    };
-  },
+  };
 
-  handleClick() {
+  state = {
+    typeDefinition: undefined,
+    typeName: undefined,
+    configurationForm: '',
+  };
+
+  handleClick = () => {
     this.props.getTypeDefinition(this.props.output.type, (definition) => {
       this.setState({ typeDefinition: definition.requested_configuration });
-      this.refs.configurationForm.open();
+      this.configurationForm.open();
     });
-  },
+  };
 
-  _handleSubmit(data) {
+  _handleSubmit = (data) => {
     this.props.onUpdate(this.props.output, data);
-  },
+  };
 
   render() {
     const typeDefinition = this.state.typeDefinition;
@@ -35,7 +35,7 @@ const EditOutputButton = React.createClass({
 
     if (typeDefinition) {
       configurationForm = (
-        <ConfigurationForm ref="configurationForm" key={`configuration-form-output-${output.id}`}
+        <ConfigurationForm ref={(configurationForm) => { this.configurationForm = configurationForm; }} key={`configuration-form-output-${output.id}`}
                            configFields={this.state.typeDefinition}
                            title={`Editing Output ${output.title}`}
                            typeName={output.type}
@@ -52,7 +52,7 @@ const EditOutputButton = React.createClass({
         {configurationForm}
       </span>
     );
-  },
-});
+  }
+}
 
 export default EditOutputButton;

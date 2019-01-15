@@ -1,17 +1,24 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+
+import createReactClass from 'create-react-class';
 
 import { Panel } from 'react-bootstrap';
 import naturalSort from 'javascript-natural-sort';
 import { Input } from 'components/bootstrap';
 
-const SidebarMessageField = React.createClass({
+const SidebarMessageField = createReactClass({
+  displayName: 'SidebarMessageField',
+
   propTypes: {
-    field: React.PropTypes.object,
-    fieldAnalyzers: React.PropTypes.array,
-    onFieldAnalyzer: React.PropTypes.func,
-    onToggled: React.PropTypes.func,
-    selected: React.PropTypes.bool,
+    field: PropTypes.object,
+    fieldAnalyzers: PropTypes.array,
+    onFieldAnalyzer: PropTypes.func,
+    onToggled: PropTypes.func,
+    selected: PropTypes.bool,
+    searchConfig: PropTypes.object.isRequired,
   },
+
   getInitialState() {
     return {
       showActions: false,
@@ -35,18 +42,33 @@ const SidebarMessageField = React.createClass({
     };
   },
 
+  _analyzerIsDisabled(field) {
+    const disabledFields = this.props.searchConfig.analysis_disabled_fields;
+    return disabledFields && disabledFields.indexOf(field) >= 0;
+  },
+
   _fieldAnalyzersList() {
-    const analyzersList = this.props.fieldAnalyzers
-      .sort((a, b) => naturalSort(a.displayName, b.displayName))
-      .map((analyzer, idx) => {
-        return (
-          <li key={`field-analyzer-button-${idx}`}>
-            <a href="#" onClick={this._onFieldAnalyzer(analyzer.refId, this.props.field.name)}>
-              {analyzer.displayName}
-            </a>
-          </li>
-        );
-      });
+    let analyzersList;
+
+    if (this._analyzerIsDisabled(this.props.field.name)) {
+      analyzersList = (
+        <li key="field-analyzers-disabled">
+          Analysis features for this field have been disabled by the administrator.
+        </li>
+      );
+    } else {
+      analyzersList = this.props.fieldAnalyzers
+        .sort((a, b) => naturalSort(a.displayName, b.displayName))
+        .map((analyzer, idx) => {
+          return (
+            <li key={`field-analyzer-button-${idx}`}>
+              <a href="#" onClick={this._onFieldAnalyzer(analyzer.refId, this.props.field.name)}>
+                {analyzer.displayName}
+              </a>
+            </li>
+          );
+        });
+    }
 
     return <Panel className="field-analyzer"><ul>{analyzersList}</ul></Panel>;
   },
@@ -71,7 +93,8 @@ const SidebarMessageField = React.createClass({
           <a href="#" onClick={this._toggleFieldAnalyzers}><i className={toggleClassName} /></a>
         </div>
         <div className="field-selector">
-          <Input type="checkbox"
+          <Input id="field-selector-checkbox"
+                 type="checkbox"
                  label={this.props.field.name}
                  checked={this.props.selected}
                  onChange={() => this.props.onToggled(this.props.field.name)} />

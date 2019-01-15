@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import naturalSort from 'javascript-natural-sort';
 
 import { Row, Col } from 'react-bootstrap';
@@ -8,30 +9,25 @@ import { CacheForm } from 'components/lookup-tables';
 import { PluginStore } from 'graylog-web-plugin/plugin';
 import ObjectUtils from 'util/ObjectUtils';
 
-const CacheCreate = React.createClass({
-
-  propTypes: {
+class CacheCreate extends React.Component {
+  static propTypes = {
     saved: PropTypes.func.isRequired,
     types: PropTypes.object.isRequired,
     validate: PropTypes.func,
     validationErrors: PropTypes.object,
-  },
+  };
 
-  getDefaultProps() {
-    return {
-      validate: null,
-      validationErrors: {},
-    };
-  },
+  static defaultProps = {
+    validate: null,
+    validationErrors: {},
+  };
 
-  getInitialState() {
-    return {
-      cache: undefined,
-      type: undefined,
-    };
-  },
+  state = {
+    cache: undefined,
+    type: undefined,
+  };
 
-  _onTypeSelect(cacheType) {
+  _onTypeSelect = (cacheType) => {
     this.setState({
       type: cacheType,
       cache: {
@@ -42,7 +38,7 @@ const CacheCreate = React.createClass({
         config: ObjectUtils.clone(this.props.types[cacheType].default_config),
       },
     });
-  },
+  };
 
   render() {
     const cachePlugins = {};
@@ -59,7 +55,8 @@ const CacheCreate = React.createClass({
       <Row className="content">
         <Col lg={8}>
           <form className="form form-horizontal" onSubmit={() => {}}>
-            <Input label="Cache Type"
+            <Input id="cache-type-select"
+                   label="Cache Type"
                    required
                    autoFocus
                    help="The type of cache to configure."
@@ -69,7 +66,7 @@ const CacheCreate = React.createClass({
                       clearable={false}
                       options={sortedCaches}
                       matchProp="value"
-                      onValueChange={this._onTypeSelect}
+                      onChange={this._onTypeSelect}
                       value={null} />
             </Input>
           </form>
@@ -89,8 +86,8 @@ const CacheCreate = React.createClass({
         </Row>
       )}
     </div>);
-  },
-});
+  }
+}
 
 
 export default CacheCreate;

@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { ListGroupItem } from 'react-bootstrap';
@@ -79,23 +80,27 @@ function collectTarget(connect, monitor) {
   };
 }
 
-const SortableListItem = React.createClass({
-  propTypes: {
-    connectDragSource: React.PropTypes.func.isRequired,
-    connectDropTarget: React.PropTypes.func.isRequired,
-    content: React.PropTypes.any.isRequired,
-    disableDragging: React.PropTypes.bool,
-    index: React.PropTypes.number.isRequired,
-    isDragging: React.PropTypes.bool.isRequired,
-    isOver: React.PropTypes.bool.isRequired,
-    id: React.PropTypes.any.isRequired,
-    moveItem: React.PropTypes.func.isRequired,
-  },
-  getDefaultProps() {
-    return {
-      disableDragging: false,
-    };
-  },
+/**
+ * Component that renders an item entry in a `SortableList` component.
+ * You most likely don't want to use this component directly, so please
+ * check the `SortableList` documentation instead.
+ */
+class SortableListItem extends React.Component {
+  static propTypes = {
+    connectDragSource: PropTypes.func.isRequired,
+    connectDropTarget: PropTypes.func.isRequired,
+    content: PropTypes.any.isRequired,
+    disableDragging: PropTypes.bool,
+    index: PropTypes.number.isRequired,
+    isDragging: PropTypes.bool.isRequired,
+    isOver: PropTypes.bool.isRequired,
+    id: PropTypes.any.isRequired,
+    moveItem: PropTypes.func.isRequired,
+  };
+
+  static defaultProps = {
+    disableDragging: false,
+  };
 
   render() {
     const { content, isDragging, isOver, connectDragSource, connectDropTarget } = this.props;
@@ -121,7 +126,7 @@ const SortableListItem = React.createClass({
     );
 
     return this.props.disableDragging ? component : connectDragSource(connectDropTarget(component));
-  },
-});
+  }
+}
 
 export default DropTarget(ItemTypes.ITEM, itemTarget, collectTarget)(DragSource(ItemTypes.ITEM, itemSource, collectSource)(SortableListItem));

@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from "react";
+import createReactClass from 'create-react-class';
 import Reflux from "reflux";
 
 import Select from "components/common/Select";
@@ -6,14 +8,23 @@ import Select from "components/common/Select";
 import StoreProvider from "injection/StoreProvider";
 const SystemStore = StoreProvider.getStore('System');
 
-const LocaleSelect = React.createClass({
+/**
+ * Component that renders a form input with all available locale settings. It also makes easy to filter
+ * values to quickly find the locale needed.
+ */
+const LocaleSelect = createReactClass({
+  displayName: 'LocaleSelect',
   mixins: [Reflux.connect(SystemStore)],
+
   propTypes: {
-    onChange: React.PropTypes.func,
+    /** Function to call when the input changes. It will receive the new locale value as argument. */
+    onChange: PropTypes.func,
   },
+
   getValue() {
-    return this.refs.locale.getValue();
+    return this.locale.getValue();
   },
+
   _formatLocales(locales) {
     const sortedLocales = Object.values(locales)
         .filter(locale => locale['language_tag'] !== 'und')
@@ -35,9 +46,11 @@ const LocaleSelect = React.createClass({
 
     return [{value: 'und', label:'Default locale'}].concat(sortedLocales);
   },
+
   _renderOption(option) {
       return <span key={option.value} title="{option.value} [{option.value}]">{option.label} [{option.value}]</span>;
   },
+
   render() {
     if (!this.state.locales) {
       return <Spinner />;
@@ -45,7 +58,7 @@ const LocaleSelect = React.createClass({
 
     const locales = this._formatLocales(this.state.locales);
     return (
-      <Select ref="locale" {...this.props}
+      <Select ref={(locale) => { this.locale = locale; }} {...this.props}
               placeholder="Pick a locale"
               options={locales}
               optionRenderer={this._renderOption} />

@@ -1,39 +1,38 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { LinkContainer } from 'react-router-bootstrap';
 import { Button, Col, Row } from 'react-bootstrap';
 
 import { Input } from 'components/bootstrap';
-import { Spinner } from 'components/common';
+import { Spinner, TimeUnitInput } from 'components/common';
 
 import { PluginStore } from 'graylog-web-plugin/plugin';
 import IndexMaintenanceStrategiesConfiguration from 'components/indices/IndexMaintenanceStrategiesConfiguration';
 import {} from 'components/indices/rotation'; // Load rotation plugin UI plugins from core.
 import {} from 'components/indices/retention'; // Load rotation plugin UI plugins from core.
 
-const IndexSetConfigurationForm = React.createClass({
-  propTypes: {
-    indexSet: React.PropTypes.object.isRequired,
-    rotationStrategies: React.PropTypes.array.isRequired,
-    retentionStrategies: React.PropTypes.array.isRequired,
-    create: React.PropTypes.bool,
-    onUpdate: React.PropTypes.func.isRequired,
-    cancelLink: React.PropTypes.string.isRequired,
-  },
+class IndexSetConfigurationForm extends React.Component {
+  static propTypes = {
+    indexSet: PropTypes.object.isRequired,
+    rotationStrategies: PropTypes.array.isRequired,
+    retentionStrategies: PropTypes.array.isRequired,
+    create: PropTypes.bool,
+    onUpdate: PropTypes.func.isRequired,
+    cancelLink: PropTypes.string.isRequired,
+  };
 
-  getInitialState() {
-    return {
-      indexSet: this.props.indexSet,
-      validationErrors: {},
-    };
-  },
+  state = {
+    indexSet: this.props.indexSet,
+    validationErrors: {},
+  };
 
-  _updateConfig(fieldName, value) {
+  _updateConfig = (fieldName, value) => {
     const config = this.state.indexSet;
     config[fieldName] = value;
     this.setState({ indexSet: config });
-  },
+  };
 
-  _validateIndexPrefix(event) {
+  _validateIndexPrefix = (event) => {
     const value = event.target.value;
 
     if (value.match(/^[a-z0-9][a-z0-9_\-+]*$/)) {
@@ -57,17 +56,17 @@ const IndexSetConfigurationForm = React.createClass({
     }
 
     this._onInputChange(event);
-  },
+  };
 
-  _onInputChange(event) {
+  _onInputChange = (event) => {
     this._updateConfig(event.target.name, event.target.value);
-  },
+  };
 
-  _onDisableOptimizationClick(event) {
+  _onDisableOptimizationClick = (event) => {
     this._updateConfig(event.target.name, event.target.checked);
-  },
+  };
 
-  _saveConfiguration(event) {
+  _saveConfiguration = (event) => {
     event.preventDefault();
 
     const invalidFields = Object.keys(this.state.validationErrors);
@@ -77,17 +76,48 @@ const IndexSetConfigurationForm = React.createClass({
     }
 
     this.props.onUpdate(this.state.indexSet);
-  },
+  };
 
-  _updateRotationConfigState(strategy, data) {
+  _updateRotationConfigState = (strategy, data) => {
     this._updateConfig('rotation_strategy_class', strategy);
     this._updateConfig('rotation_strategy', data);
-  },
+  };
 
-  _updateRetentionConfigState(strategy, data) {
+  _updateRetentionConfigState = (strategy, data) => {
     this._updateConfig('retention_strategy_class', strategy);
     this._updateConfig('retention_strategy', data);
-  },
+  };
+
+  _onFieldTypeRefreshIntervalChange = (value, unit) => {
+    let interval;
+    switch (unit) {
+      case 'NANOSECONDS':
+        interval = value / 1000.0 / 1000.0;
+        break;
+      case 'MICROSECONDS':
+        interval = value / 1000.0;
+        break;
+      case 'MILLISECONDS':
+        interval = value;
+        break;
+      case 'SECONDS':
+        interval = value * 1000;
+        break;
+      case 'MINUTES':
+        interval = value * 1000 * 60;
+        break;
+      case 'HOURS':
+        interval = value * 1000 * 60 * 60;
+        break;
+      case 'DAYS':
+        interval = value * 1000 * 60 * 60 * 24;
+        break;
+      default:
+        throw new Error(`Invalid field type refresh interval unit: ${unit}`);
+    }
+
+    this._updateConfig('field_type_refresh_interval', interval);
+  };
 
   render() {
     const indexSet = this.props.indexSet;
@@ -216,6 +246,13 @@ const IndexSetConfigurationForm = React.createClass({
                        onChange={this._onDisableOptimizationClick}
                        checked={indexSet.index_optimization_disabled}
                        help="Disable Elasticsearch index optimization (force merge) after rotation." />
+                <TimeUnitInput id="field-type-refresh-interval"
+                               label="Field type refresh interval"
+                               help="How often the field type information for the active write index will be updated."
+                               value={indexSet.field_type_refresh_interval / 1000.0}
+                               unit="SECONDS"
+                               required
+                               update={this._onFieldTypeRefreshIntervalChange} />
               </Col>
             </Row>
             <Row>
@@ -241,7 +278,7 @@ const IndexSetConfigurationForm = React.createClass({
         </Col>
       </Row>
     );
-  },
-});
+  }
+}
 
 export default IndexSetConfigurationForm;

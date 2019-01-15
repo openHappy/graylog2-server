@@ -1,4 +1,6 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import Immutable from 'immutable';
 import moment from 'moment';
@@ -17,13 +19,16 @@ const { DecoratorsStore } = CombinedProvider.get('Decorators');
 import { DocumentTitle, Spinner } from 'components/common';
 import { MalformedSearchQuery, SearchExecutionError, SearchResult } from 'components/search';
 
-const SearchPage = React.createClass({
+const SearchPage = createReactClass({
+  displayName: 'SearchPage',
+
   propTypes: {
     location: PropTypes.object.isRequired,
     searchConfig: PropTypes.object.isRequired,
     searchInStream: PropTypes.object,
     forceFetch: PropTypes.bool,
   },
+
   mixins: [
     Reflux.connect(NodesStore),
     Reflux.connect(MessageFieldsStore),
@@ -32,6 +37,7 @@ const SearchPage = React.createClass({
     Reflux.listenTo(RefreshStore, '_setupTimer', '_setupTimer'),
     Reflux.listenTo(DecoratorsStore, '_refreshDataFromDecoratorStore', '_refreshDataFromDecoratorStore'),
   ],
+
   getInitialState() {
     return {
       error: undefined,
@@ -39,6 +45,7 @@ const SearchPage = React.createClass({
       updatingHistogram: false,
     };
   },
+
   componentDidMount() {
     InputsActions.list.triggerPromise();
 
@@ -50,6 +57,7 @@ const SearchPage = React.createClass({
 
     NodesActions.list();
   },
+
   componentWillReceiveProps(nextProps) {
     const currentLocation = this.props.location || {};
     const nextLocation = nextProps.location || {};
@@ -61,24 +69,32 @@ const SearchPage = React.createClass({
       this._refreshData(nextProps.searchInStream);
     }
   },
+
   componentWillUnmount() {
+    if (this.promise) {
+      this.promise.cancel();
+    }
     this._stopTimer();
   },
+
   _setupTimer(refresh) {
     this._stopTimer();
     if (refresh.enabled) {
       this.timer = setInterval(this._refreshData, refresh.interval);
     }
   },
+
   _stopTimer() {
     if (this.timer) {
       clearInterval(this.timer);
     }
   },
+
   _refreshDataFromDecoratorStore() {
     const searchInStream = this.props.searchInStream;
     this._refreshData(searchInStream);
   },
+
   _refreshData(searchInStream) {
     const query = SearchStore.originalQuery;
     const stream = searchInStream || this.props.searchInStream || {};
@@ -92,9 +108,7 @@ const SearchPage = React.createClass({
     this.promise = UniversalSearchStore.search(SearchStore.originalRangeType, query, SearchStore.originalRangeParams.toJS(), streamId, null, SearchStore.page, SearchStore.sortField, SearchStore.sortOrder)
       .then(
         (response) => {
-          if (this.isMounted()) {
-            this.setState({ searchResult: response, error: undefined });
-          }
+          this.setState({ searchResult: response, error: undefined });
 
           const interval = this.props.location.query.interval ? this.props.location.query.interval : this._determineHistogramResolution(response);
 
@@ -124,10 +138,12 @@ const SearchPage = React.createClass({
         this.promise = undefined;
       });
   },
+
   _formatInputs(state) {
     const inputs = InputsStore.inputsAsMap(state.inputs);
     this.setState({ inputs: Immutable.Map(inputs) });
   },
+
   _determineSearchDuration(response) {
     const searchTo = response.to;
     let searchFrom;
@@ -151,6 +167,7 @@ const SearchPage = React.createClass({
 
     return moment.duration(queryRangeInMinutes, 'minutes');
   },
+
   _determineHistogramResolution(response) {
     const duration = this._determineSearchDuration(response);
 

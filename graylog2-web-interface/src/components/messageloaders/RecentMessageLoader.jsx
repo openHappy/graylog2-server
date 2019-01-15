@@ -1,23 +1,23 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import InputDropdown from 'components/inputs/InputDropdown';
 import UserNotification from 'util/UserNotification';
 
 import StoreProvider from 'injection/StoreProvider';
 const UniversalSearchStore = StoreProvider.getStore('UniversalSearch');
 
-const RecentMessageLoader = React.createClass({
-  propTypes: {
+class RecentMessageLoader extends React.Component {
+  static propTypes = {
     inputs: PropTypes.object,
     onMessageLoaded: PropTypes.func.isRequired,
     selectedInputId: PropTypes.string,
-  },
-  getInitialState() {
-    return {
-      loading: false,
-    };
-  },
+  };
 
-  onClick(inputId) {
+  state = {
+    loading: false,
+  };
+
+  onClick = (inputId) => {
     const input = this.props.inputs.get(inputId);
     if (!input) {
       UserNotification.error(`Invalid input selected: ${inputId}`,
@@ -35,7 +35,8 @@ const RecentMessageLoader = React.createClass({
       }
     });
     promise.finally(() => this.setState({ loading: false }));
-  },
+  };
+
   render() {
     let helpMessage;
     if (this.props.selectedInputId) {
@@ -51,7 +52,7 @@ const RecentMessageLoader = React.createClass({
                        disabled={this.state.loading} />
       </div>
     );
-  },
-});
+  }
+}
 
 export default RecentMessageLoader;

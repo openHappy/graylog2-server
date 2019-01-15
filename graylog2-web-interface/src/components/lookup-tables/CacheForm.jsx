@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import _ from 'lodash';
 import { Button, Col, Row } from 'react-bootstrap';
 import { Input } from 'components/bootstrap';
@@ -11,34 +12,28 @@ import CombinedProvider from 'injection/CombinedProvider';
 
 const { LookupTableCachesActions } = CombinedProvider.get('LookupTableCaches');
 
-const CacheForm = React.createClass({
-  propTypes: {
+class CacheForm extends React.Component {
+  static propTypes = {
     type: PropTypes.string.isRequired,
     saved: PropTypes.func.isRequired,
     create: PropTypes.bool,
     cache: PropTypes.object,
     validate: PropTypes.func,
     validationErrors: PropTypes.object,
-  },
+  };
 
-  getDefaultProps() {
-    return {
-      create: true,
-      cache: {
-        id: undefined,
-        title: '',
-        description: '',
-        name: '',
-        config: {},
-      },
-      validate: null,
-      validationErrors: {},
-    };
-  },
-
-  getInitialState() {
-    return this._initialState(this.props.cache);
-  },
+  static defaultProps = {
+    create: true,
+    cache: {
+      id: undefined,
+      title: '',
+      description: '',
+      name: '',
+      config: {},
+    },
+    validate: null,
+    validationErrors: {},
+  };
 
   componentWillReceiveProps(nextProps) {
     if (_.isEqual(this.props.cache, nextProps.cache)) {
@@ -46,16 +41,16 @@ const CacheForm = React.createClass({
       return;
     }
     this.setState(this._initialState(nextProps.cache));
-  },
+  }
 
   componentDidMount() {
     if (!this.props.create) {
       // Validate when mounted to immediately show errors for invalid objects
       this._validate(this.props.cache);
     }
-  },
+  }
 
-  _initialState(c) {
+  _initialState = (c) => {
     const cache = ObjectUtils.clone(c);
 
     return {
@@ -70,30 +65,30 @@ const CacheForm = React.createClass({
         config: cache.config,
       },
     };
-  },
+  };
 
   componentWillUnmount() {
     this._clearTimer();
-  },
+  }
 
-  validationCheckTimer: undefined,
+  validationCheckTimer = undefined;
 
-  _clearTimer() {
+  _clearTimer = () => {
     if (this.validationCheckTimer !== undefined) {
       clearTimeout(this.validationCheckTimer);
       this.validationCheckTimer = undefined;
     }
-  },
+  };
 
-  _validate(cache) {
+  _validate = (cache) => {
     // first cancel outstanding validation timer, we have new data
     this._clearTimer();
     if (this.props.validate) {
       this.validationCheckTimer = setTimeout(() => this.props.validate(cache), 500);
     }
-  },
+  };
 
-  _onChange(event) {
+  _onChange = (event) => {
     const cache = ObjectUtils.clone(this.state.cache);
     cache[event.target.name] = FormsUtils.getValueFromInput(event.target);
     let generateName = this.state.generateName;
@@ -107,23 +102,23 @@ const CacheForm = React.createClass({
     }
     this._validate(cache);
     this.setState({ cache: cache });
-  },
+  };
 
-  _onConfigChange(event) {
+  _onConfigChange = (event) => {
     const cache = ObjectUtils.clone(this.state.cache);
     cache.config[event.target.name] = FormsUtils.getValueFromInput(event.target);
     this._validate(cache);
     this.setState({ cache: cache });
-  },
+  };
 
-  _updateConfig(newConfig) {
+  _updateConfig = (newConfig) => {
     const cache = ObjectUtils.clone(this.state.cache);
     cache.config = newConfig;
     this._validate(cache);
     this.setState({ cache: cache });
-  },
+  };
 
-  _save(event) {
+  _save = (event) => {
     if (event) {
       event.preventDefault();
     }
@@ -136,20 +131,20 @@ const CacheForm = React.createClass({
     }
 
     promise.then(() => { this.props.saved(); });
-  },
+  };
 
-  _sanitizeTitle(title) {
+  _sanitizeTitle = (title) => {
     return title.trim().replace(/\W+/g, '-').toLowerCase();
-  },
+  };
 
-  _validationState(fieldName) {
+  _validationState = (fieldName) => {
     if (this.props.validationErrors[fieldName]) {
       return 'error';
     }
     return null;
-  },
+  };
 
-  _validationMessage(fieldName, defaultText) {
+  _validationMessage = (fieldName, defaultText) => {
     if (this.props.validationErrors[fieldName]) {
       return (<div>
         <span>{defaultText}</span>
@@ -158,7 +153,9 @@ const CacheForm = React.createClass({
       </div>);
     }
     return <span>{defaultText}</span>;
-  },
+  };
+
+  state = this._initialState(this.props.cache);
 
   render() {
     const cache = this.state.cache;
@@ -234,16 +231,18 @@ const CacheForm = React.createClass({
             </fieldset>
             {configFieldSet}
             <fieldset>
-              <Input wrapperClassName="col-sm-offset-3 col-sm-9">
-                <Button type="submit" bsStyle="success">{this.props.create ? 'Create Cache' : 'Update Cache'}</Button>
-              </Input>
+              <Row>
+                <Col mdOffset={3} md={9}>
+                  <Button type="submit" bsStyle="success">{this.props.create ? 'Create Cache' : 'Update Cache'}</Button>
+                </Col>
+              </Row>
             </fieldset>
           </form>
         </Col>
         {documentationColumn}
       </Row>
     );
-  },
-});
+  }
+}
 
 export default CacheForm;

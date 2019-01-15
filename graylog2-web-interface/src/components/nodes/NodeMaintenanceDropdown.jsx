@@ -1,16 +1,18 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { LinkContainer } from 'react-router-bootstrap';
 import { ButtonGroup, DropdownButton, MenuItem } from 'react-bootstrap';
 import URI from 'urijs';
 
-import { IfPermitted } from 'components/common';
+import { ExternalLink, IfPermitted } from 'components/common';
 
 import Routes from 'routing/Routes';
 
-const NodeMaintenanceDropdown = React.createClass({
-  propTypes: {
+class NodeMaintenanceDropdown extends React.Component {
+  static propTypes = {
     node: PropTypes.object.isRequired,
-  },
+  };
+
   render() {
     const apiBrowserURI = new URI(`${this.props.node.transport_address}/api-browser`).normalizePathname().toString();
     return (
@@ -33,12 +35,12 @@ const NodeMaintenanceDropdown = React.createClass({
           </IfPermitted>
 
           <MenuItem href={apiBrowserURI} target="_blank">
-            API Browser <i className="fa fa-external-link" />
+            <ExternalLink>API Browser</ExternalLink>
           </MenuItem>
         </DropdownButton>
       </ButtonGroup>
     );
-  },
-});
+  }
+}
 
 export default NodeMaintenanceDropdown;

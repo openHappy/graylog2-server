@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Row, Col, Alert, Button } from 'react-bootstrap';
 
 import { IfPermitted } from 'components/common';
@@ -11,12 +12,13 @@ import StringUtils from 'util/StringUtils';
 import StoreProvider from 'injection/StoreProvider';
 const SystemProcessingStore = StoreProvider.getStore('SystemProcessing');
 
-const SystemOverviewDetails = React.createClass({
-  propTypes: {
+class SystemOverviewDetails extends React.Component {
+  static propTypes = {
     node: PropTypes.object.isRequired,
     information: PropTypes.object.isRequired,
-  },
-  _toggleMessageProcessing() {
+  };
+
+  _toggleMessageProcessing = () => {
     if (confirm(`You are about to ${this.props.information.is_processing ? 'pause' : 'resume'} message processing in this node. Are you sure?`)) {
       if (this.props.information.is_processing) {
         SystemProcessingStore.pause(this.props.node.node_id);
@@ -24,7 +26,8 @@ const SystemOverviewDetails = React.createClass({
         SystemProcessingStore.resume(this.props.node.node_id);
       }
     }
-  },
+  };
+
   render() {
     const information = this.props.information;
     const lbStatus = information.lb_status.toUpperCase();
@@ -74,7 +77,7 @@ const SystemOverviewDetails = React.createClass({
         </Col>
       </Row>
     );
-  },
-});
+  }
+}
 
 export default SystemOverviewDetails;

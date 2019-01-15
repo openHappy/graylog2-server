@@ -1,10 +1,12 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import numeral from 'numeral';
 
-const CounterDetails = React.createClass({
-  propTypes: {
-    metric: React.PropTypes.object.isRequired,
-  },
+class CounterDetails extends React.Component {
+  static propTypes = {
+    metric: PropTypes.object.isRequired,
+  };
+
   render() {
     const metric = this.props.metric.metric;
     return (
@@ -13,7 +15,7 @@ const CounterDetails = React.createClass({
         <dd><span className="number-format">{numeral(metric.count).format('0,0')}</span></dd>
       </dl>
     );
-  },
-});
+  }
+}
 
 export default CounterDetails;

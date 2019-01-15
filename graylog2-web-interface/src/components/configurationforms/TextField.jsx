@@ -1,30 +1,33 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import FieldHelpers from 'components/configurationforms/FieldHelpers';
 
-const TextField = React.createClass({
-  propTypes: {
-    autoFocus: React.PropTypes.bool,
-    field: React.PropTypes.object.isRequired,
-    onChange: React.PropTypes.func.isRequired,
-    title: React.PropTypes.string.isRequired,
-    typeName: React.PropTypes.string.isRequired,
-    value: React.PropTypes.any,
-  },
-  getInitialState() {
-    return {
-      typeName: this.props.typeName,
-      field: this.props.field,
-      title: this.props.title,
-      value: this.props.value,
-    };
-  },
+class TextField extends React.Component {
+  static propTypes = {
+    autoFocus: PropTypes.bool,
+    field: PropTypes.object.isRequired,
+    onChange: PropTypes.func.isRequired,
+    title: PropTypes.string.isRequired,
+    typeName: PropTypes.string.isRequired,
+    value: PropTypes.any,
+  };
+
+  state = {
+    typeName: this.props.typeName,
+    field: this.props.field,
+    title: this.props.title,
+    value: this.props.value,
+  };
+
   componentWillReceiveProps(props) {
     this.setState(props);
-  },
-  handleChange(evt) {
+  }
+
+  handleChange = (evt) => {
     this.props.onChange(this.state.title, evt.target.value);
     this.setState({ value: evt.target.value });
-  },
+  };
+
   render() {
     const field = this.state.field;
     const title = this.state.title;
@@ -58,7 +61,7 @@ const TextField = React.createClass({
         <p className="help-block">{field.description}</p>
       </div>
     );
-  },
-});
+  }
+}
 
 export default TextField;

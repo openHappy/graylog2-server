@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import { Input } from 'components/bootstrap';
 import { PluginStore } from 'graylog-web-plugin/plugin';
 
@@ -8,12 +10,21 @@ import FormsUtils from 'util/FormsUtils';
 import ObjectUtils from 'util/ObjectUtils';
 import StringUtils from 'util/StringUtils';
 
-const WidgetCreationModal = React.createClass({
+const WidgetCreationModal = createReactClass({
+  displayName: 'WidgetCreationModal',
+
   propTypes: {
-    fields: React.PropTypes.array,
-    onConfigurationSaved: React.PropTypes.func.isRequired,
-    onModalHidden: React.PropTypes.func,
-    widgetType: React.PropTypes.string.isRequired,
+    fields: PropTypes.array,
+    onConfigurationSaved: PropTypes.func.isRequired,
+    onModalHidden: PropTypes.func,
+    widgetType: PropTypes.string.isRequired,
+    loading: PropTypes.bool,
+  },
+
+  getDefaultProps() {
+    return {
+      loading: false,
+    };
   },
 
   getInitialState() {
@@ -35,22 +46,22 @@ const WidgetCreationModal = React.createClass({
   },
 
   _getInitialConfiguration() {
-    if (!this.refs.pluginConfiguration) {
+    if (!this.pluginConfiguration) {
       return;
     }
 
     const configKeys = Object.keys(this.state.config);
     if (configKeys.length === 0) {
-      this.setState({ config: this.refs.pluginConfiguration.getInitialConfiguration() });
+      this.setState({ config: this.pluginConfiguration.getInitialConfiguration() });
     }
   },
 
   open() {
-    this.refs.createModal.open();
+    this.createModal.open();
   },
 
   hide() {
-    this.refs.createModal.close();
+    this.createModal.close();
   },
 
   save() {
@@ -104,7 +115,7 @@ const WidgetCreationModal = React.createClass({
   _getSpecificWidgetInputs() {
     if (this.widgetPlugin.configurationCreateComponent) {
       return React.createElement(this.widgetPlugin.configurationCreateComponent, {
-        ref: 'pluginConfiguration',
+        ref: (elem) => { this.pluginConfiguration = elem; },
         config: this.state.config,
         fields: this.props.fields,
         onChange: this._onConfigurationValueChange,
@@ -113,13 +124,15 @@ const WidgetCreationModal = React.createClass({
   },
 
   render() {
+    const loading = this.props.loading;
     return (
-      <BootstrapModalForm ref="createModal"
+      <BootstrapModalForm ref={(createModal) => { this.createModal = createModal; }}
                           title="Create Dashboard Widget"
                           onModalOpen={this._getInitialConfiguration}
                           onModalClose={this.props.onModalHidden}
                           onSubmitForm={this.save}
-                          submitButtonText="Create">
+                          submitButtonText={loading ? 'Creating...' : 'Create'}
+                          submitButtonDisabled={loading}>
         <fieldset>
           <Input type="text"
                  label="Title"

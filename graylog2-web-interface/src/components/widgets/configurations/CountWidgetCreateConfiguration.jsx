@@ -1,18 +1,19 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Input } from 'components/bootstrap';
 
-const CountWidgetCreateConfiguration = React.createClass({
-  propTypes: {
+class CountWidgetCreateConfiguration extends React.Component {
+  static propTypes = {
     config: PropTypes.object.isRequired,
     onChange: PropTypes.func.isRequired,
-  },
+  };
 
-  getInitialConfiguration() {
+  getInitialConfiguration = () => {
     return {
       trend: false,
       lower_is_better: false,
     };
-  },
+  };
 
   render() {
     return (
@@ -37,7 +38,7 @@ const CountWidgetCreateConfiguration = React.createClass({
                help="Use green colour when trend goes down." />
       </fieldset>
     );
-  },
-});
+  }
+}
 
 export default CountWidgetCreateConfiguration;

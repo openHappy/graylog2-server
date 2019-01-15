@@ -1,12 +1,14 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Alert, Table } from 'react-bootstrap';
 
 import { IndexerFailure } from 'components/indexers';
 
-const IndexerFailuresList = React.createClass({
-  propTypes: {
-    failures: React.PropTypes.arrayOf(React.PropTypes.object).isRequired,
-  },
+class IndexerFailuresList extends React.Component {
+  static propTypes = {
+    failures: PropTypes.arrayOf(PropTypes.object).isRequired,
+  };
+
   render() {
     if (this.props.failures.length === 0) {
       return (
@@ -31,7 +33,7 @@ const IndexerFailuresList = React.createClass({
         </Table>
       </div>
     );
-  },
-});
+  }
+}
 
 export default IndexerFailuresList;

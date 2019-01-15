@@ -1,20 +1,24 @@
-import React, { PropTypes } from 'react';
-import ReactDOM from 'react-dom';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import $ from 'jquery';
-import { PluginStore } from 'graylog-web-plugin/plugin';
+import Reflux from 'reflux';
 
 import { WidgetConfigModal, WidgetEditConfigModal, WidgetFooter, WidgetHeader, WidgetVisualizationNotFound } from 'components/widgets';
-
+import { PluginStore } from 'graylog-web-plugin/plugin';
 import StoreProvider from 'injection/StoreProvider';
-const WidgetsStore = StoreProvider.getStore('Widgets');
-
-import ActionsProvider from 'injection/ActionsProvider';
-const WidgetsActions = ActionsProvider.getActions('Widgets');
-
 import Routes from 'routing/Routes';
 import EventHandlersThrottler from 'util/EventHandlersThrottler';
+import PermissionsMixin from 'util/PermissionsMixin';
+import CombinedProvider from '../../injection/CombinedProvider';
 
-const Widget = React.createClass({
+const { WidgetsStore, WidgetsActions } = CombinedProvider.get('Widgets');
+const CurrentUserStore = StoreProvider.getStore('CurrentUser');
+
+const Widget = createReactClass({
+  displayName: 'Widget',
+  mixins: [Reflux.connect(CurrentUserStore), PermissionsMixin],
+
   propTypes: {
     widget: PropTypes.object.isRequired,
     dashboardId: PropTypes.string.isRequired,
@@ -22,6 +26,7 @@ const Widget = React.createClass({
     locked: PropTypes.bool.isRequired,
     streamIds: PropTypes.object,
   },
+
   getInitialState() {
     this.widgetPlugin = this._getWidgetPlugin(this.props.widget.type);
     return {
@@ -33,6 +38,7 @@ const Widget = React.createClass({
       width: undefined,
     };
   },
+
   componentDidMount() {
     this._loadValue();
     this.loadValueInterval = setInterval(this._loadValue, Math.min(this.props.widget.cache_time * 1000, this.DEFAULT_WIDGET_VALUE_REFRESH));
@@ -45,12 +51,15 @@ const Widget = React.createClass({
     // is going to be called n times on the same widget, resulting in a single widget being updated n times.
     $(window).on('resize', this._onResize);
   },
+
   componentWillReceiveProps(nextProps) {
     this.widgetPlugin = this._getWidgetPlugin(nextProps.widget.type);
   },
+
   componentDidUpdate() {
     this._calculateWidgetSize();
   },
+
   componentWillUnmount() {
     clearInterval(this.loadValueInterval);
     $(window).off('resize', this._onResize);
@@ -67,15 +76,17 @@ const Widget = React.createClass({
   _isBoundToStream() {
     return ('stream_id' in this.props.widget.config) && (this.props.widget.config.stream_id !== null);
   },
+
   _getWidgetNode() {
-    return ReactDOM.findDOMNode(this.refs.widget);
+    return this.node;
   },
+
   _loadValue() {
     if (this.state.deleted || (this.state.result !== undefined && !this.props.shouldUpdate)) {
       return;
     }
 
-    const width = this.refs.widget.clientWidth;
+    const width = this.node.clientWidth;
 
     WidgetsStore.loadValue(this.props.dashboardId, this.props.widget.id, width).then((value) => {
       // Avoid updating state if the result didn't change
@@ -105,11 +116,14 @@ const Widget = React.createClass({
       });
     });
   },
+
   _onResize() {
     this.eventsThrottler.throttle(this._calculateWidgetSize, undefined, this.props.widget.id);
   },
+
   _calculateWidgetSize() {
     const $widgetNode = $(this._getWidgetNode());
+    if (!$widgetNode) { return; }
     // .height() give us the height of the whole widget without counting paddings, we need to remove the size
     // of the header and footer from that.
     const availableHeight = $widgetNode.height() - (this.WIDGET_HEADER_HEIGHT + this.WIDGET_FOOTER_HEIGHT);
@@ -118,6 +132,7 @@ const Widget = React.createClass({
       this.setState({ height: availableHeight, width: availableWidth });
     }
   },
+
   _getVisualization() {
     if (this.props.widget.type === '') {
       return null;
@@ -146,8 +161,10 @@ const Widget = React.createClass({
       height: this.state.height,
       width: this.state.width,
       computationTimeRange: this.state.computationTimeRange,
+      locked: !this.props.locked, // widget should be locked when dashboard is unlocked and widgets can be moved
     });
   },
+
   _getTimeRange() {
     const config = this.props.widget.config;
     const rangeType = config.timerange.type;
@@ -172,6 +189,7 @@ const Widget = React.createClass({
 
     return timeRange;
   },
+
   replayUrl() {
     const config = this.props.widget.config;
     if (this._isBoundToStream()) {
@@ -180,62 +198,71 @@ const Widget = React.createClass({
 
     return Routes.search(config.query, this._getTimeRange(), config.interval);
   },
-  _showConfig() {
-    this.refs.configModal.open();
-  },
-  _showEditConfig() {
-    this.refs.editModal.open();
-  },
-  updateWidget(newWidgetData) {
-    newWidgetData.id = this.props.widget.id;
 
-    WidgetsStore.updateWidget(this.props.dashboardId, newWidgetData);
+  _showConfig() {
+    this.configModal.open();
   },
+
+  _showEditConfig() {
+    this.editModal.open();
+  },
+
+  updateWidget(newWidgetData) {
+    const realNewWidgetData = newWidgetData;
+    realNewWidgetData.id = this.props.widget.id;
+
+    WidgetsStore.updateWidget(this.props.dashboardId, realNewWidgetData);
+  },
+
   deleteWidget() {
     if (window.confirm(`Do you really want to delete "${this.props.widget.description}"?`)) {
       this.setState({ deleted: true });
       WidgetsActions.removeWidget(this.props.dashboardId, this.props.widget.id);
     }
   },
+
   render() {
     if (this.state.deleted) {
       return <span />;
     }
     const showConfigModal = (
-      <WidgetConfigModal ref="configModal"
+      <WidgetConfigModal ref={(node) => { this.configModal = node; }}
                          dashboardId={this.props.dashboardId}
                          widget={this.props.widget}
                          boundToStream={this._isBoundToStream()} />
     );
 
     const editConfigModal = (
-      <WidgetEditConfigModal ref="editModal"
+      <WidgetEditConfigModal ref={(node) => { this.editModal = node; }}
                              widget={this.props.widget}
                              onUpdate={this.updateWidget} />
     );
 
-    let disabledTooltip = null;
-    if (this.props.streamIds != null && this.props.widget.config.stream_id &&
-        !this.props.streamIds[this.props.widget.config.stream_id]) {
-      disabledTooltip = 'The stream is not available, cannot replay search.';
-    }
+    /* Note that we consider two cases here: a dashboard configured from
+       a stream and a dashboard configured from global search. */
+    const canReadConfiguredStream = this.props.widget.config.stream_id && this.props.streamIds != null &&
+      this.props.streamIds[this.props.widget.config.stream_id];
+    const canSearchGlobally = !this.props.widget.config.stream_id &&
+      this.isPermitted(this.state.currentUser.permissions,
+        ['searches:absolute', 'searches:keyword', 'searches:relative']);
+
+    const disabledReplay = !canReadConfiguredStream && !canSearchGlobally;
+
     return (
-      <div ref="widget" className="widget" data-widget-id={this.props.widget.id}>
-        <WidgetHeader ref="widgetHeader"
-                      title={this.props.widget.description}
-                      calculatedAt={this.state.calculatedAt}
-                      error={this.state.error}
-                      errorMessage={this.state.errorMessage} />
+      <div ref={(node) => { this.node = node; }} className="widget" data-widget-id={this.props.widget.id}>
+        <WidgetHeader title={this.props.widget.description} />
 
         {this._getVisualization()}
 
-        <WidgetFooter ref="widgetFooter"
-                      locked={this.props.locked}
+        <WidgetFooter locked={this.props.locked}
                       onShowConfig={this._showConfig}
                       onEditConfig={this._showEditConfig}
                       onDelete={this.deleteWidget}
                       replayHref={this.replayUrl()}
-                      replayToolTip={disabledTooltip} />
+                      replayDisabled={disabledReplay}
+                      calculatedAt={this.state.calculatedAt}
+                      error={this.state.error}
+                      errorMessage={this.state.errorMessage} />
         {this.props.locked ? showConfigModal : editConfigModal}
       </div>
     );

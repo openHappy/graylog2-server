@@ -1,7 +1,3 @@
-/// <reference path="../../../declarations/jquery/jquery.d.ts" />
-/// <reference path="../../../declarations/node/node.d.ts" />
-/// <reference path='../../../node_modules/immutable/dist/immutable.d.ts'/>
-
 'use strict';
 
 import $ = require('jquery');
@@ -230,15 +226,80 @@ class SearchStore {
         return originalSearch.set('rangeParams', rangeParams);
     }
 
-    addSearchTerm(field, value, operator) {
-        let effectiveValue = value;
-        if (field === 'timestamp') {
-            const dateTime = new DateTime(value).toTimeZone('UTC');
-            effectiveValue = dateTime.toString(DateTime.Formats.TIMESTAMP);
+    appendToQueryString(query: string, field: string, value: any, operator: any) {
+      let effectiveValue = value;
+      if (field === 'timestamp') {
+        // when the timestamp comes from a quickvalues source, it is a unix timestamp with millis
+        // otherwise it is a datetime string in UTC (from a message list detail view)
+        if (isNaN(Number(value))) {
+          // convert back to UTC because DateTime always gives us the user timezone
+          const dateTime = new DateTime(value).toTimeZone('UTC');
+          // search expects UTC datetimes
+          effectiveValue = dateTime.toString(DateTime.Formats.TIMESTAMP);
+        } else {
+          // when this comes from quickvalues (stacked or not) the value is a unix millis timestamp and needs to be
+          // converted to a UTC datetime string for search
+          effectiveValue = new DateTime(new Date(Number(value))).toTimeZone('UTC').toString(DateTime.Formats.TIMESTAMP);
         }
-        const term = `${field}:${SearchStore.escape(effectiveValue)}`;
-        const effectiveOperator = operator || SearchStore.AND_OPERATOR;
-        this.addQueryTerm(term, effectiveOperator);
+      }
+      const term = `${field}:${SearchStore.escape(effectiveValue)}`;
+      const effectiveOperator = operator || SearchStore.AND_OPERATOR;
+      const newQuery = this.addQueryTerm(query, term, effectiveOperator);
+
+      return newQuery;
+    }
+
+    appendFieldQueryObjectToQueryString(query: string, fieldQueryObjects: Array<Array<{field: string, value: string}>>, operator: any) {
+      // We transform field query objects like
+      //   [
+      //     [
+      //       { field: 'a', value: 'foo' }
+      //       { field: 'b', value: 'bar' }
+      //     ],
+      //     [
+      //       { field: 'c', value: 'baz' }
+      //       { field: 'd', value: 'hey' }
+      //     ],
+      //   ]
+      //
+      // into a query string that looks like this:
+      //
+      //   "(a:foo AND b:bar) OR (c:baz AND d:hey)"
+      //
+      const newQuery = fieldQueryObjects.map((subquery) => {
+        const q = subquery.reduce((sq, o) => {
+          return this.appendToQueryString(sq, o.field, o.value, SearchStore.AND_OPERATOR);
+        }, '');
+
+        return `(${q})`;
+      }).join(` ${SearchStore.OR_OPERATOR} `);
+
+      if (query && query !== '' && query !== '*') {
+        return `${query} ${operator || SearchStore.AND_OPERATOR} (${newQuery})`;
+      } else {
+        return newQuery;
+      }
+    }
+
+    addSearchTerm(field, value, operator) {
+        const newQuery = this.appendToQueryString(this.query, field, value, operator);
+
+        if (this.query !== newQuery) {
+          this.query = newQuery;
+          if (this.onAddQueryTerm !== undefined) {
+            this.onAddQueryTerm();
+          }
+        }
+    }
+
+    addSearchTermWithMapping(mapping, field, value, operator) {
+        if (!mapping[value]) {
+          return this.addSearchTerm(field, value, operator);
+        }
+
+        mapping[value].forEach((m) => {
+          this.addSearchTerm(m.field, m.value, operator);
+        });
     }
 
     changeTimeRange(newRangeType: string, newRangeParams: Object) {
@@ -271,7 +332,7 @@ class SearchStore {
         escapedTerm = escapedTerm.replace(/<br>/g, " ");
 
         if (this.isPhrase(escapedTerm)) {
-            escapedTerm = String(escapedTerm).replace(/\"/g, '\\"');
+            escapedTerm = String(escapedTerm).replace(/(\"|\\)/g, '\\$&');
             escapedTerm = '"' + escapedTerm + '"';
         } else {
             // Escape all lucene special characters from the source: && || : \ / + - ! ( ) { } [ ] ^ " ~ * ?
@@ -281,24 +342,21 @@ class SearchStore {
         return escapedTerm;
     }
 
-    queryContainsTerm(termInQuestion: string): boolean {
-        return this.query.indexOf(termInQuestion) != -1;
+    queryContainsTerm(query: string, termInQuestion: string): boolean {
+        return query.indexOf(termInQuestion) != -1;
     }
 
-    addQueryTerm(term: string, operator: string): string {
-        if (this.queryContainsTerm(term)) {
-            return;
+    addQueryTerm(query: string, term: string, operator: string): string {
+        if (this.queryContainsTerm(query, term)) {
+            return query;
         }
-        var newQuery = "";
-        if (typeof operator !== 'undefined' && this.query !== "" && this.query !== "*") {
-            newQuery = this.query + " " + operator + " ";
+        let newQuery = "";
+        if (typeof operator !== 'undefined' && query !== "" && query !== "*") {
+            newQuery = query + " " + operator + " ";
         }
         newQuery += term;
-        this.query = newQuery;
 
-        if (this.onAddQueryTerm !== undefined) {
-            this.onAddQueryTerm();
-        }
+        return newQuery;
     }
 
     getParams(): Object {
@@ -375,7 +433,7 @@ class SearchStore {
     }
 
     executeSearch(url) {
-        history.pushState(null, url);
+        history.push(url);
     }
 
     searchSurroundingMessages(messageId: string, fromTime: string, toTime: string, filter: any) {

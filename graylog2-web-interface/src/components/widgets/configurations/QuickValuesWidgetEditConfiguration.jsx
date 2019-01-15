@@ -1,17 +1,20 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Input } from 'components/bootstrap';
 
-import { QueryConfiguration } from 'components/widgets/configurations';
+import { QueryConfiguration, QuickValuesConfiguration } from 'components/widgets/configurations';
 
-const QuickValuesWidgetEditConfiguration = React.createClass({
-  propTypes: {
+class QuickValuesWidgetEditConfiguration extends React.Component {
+  static propTypes = {
     config: PropTypes.object.isRequired,
     onChange: PropTypes.func.isRequired,
-  },
+  };
+
   render() {
     return (
       <fieldset>
         <QueryConfiguration {...this.props} />
+        <QuickValuesConfiguration {...this.props} />
         <Input key="showPieChart"
                type="checkbox"
                id="quickvalues-show-pie-chart"
@@ -31,7 +34,7 @@ const QuickValuesWidgetEditConfiguration = React.createClass({
                help="Include a table with quantitative information." />
       </fieldset>
     );
-  },
-});
+  }
+}
 
 export default QuickValuesWidgetEditConfiguration;

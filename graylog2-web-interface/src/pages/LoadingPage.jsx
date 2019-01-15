@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Col, Row } from 'react-bootstrap';
 
@@ -6,26 +7,24 @@ import { DocumentTitle, Spinner } from 'components/common';
 import disconnectedStyle from '!style/useable!css!less!stylesheets/disconnected.less';
 import authStyle from '!style/useable!css!less!stylesheets/auth.less';
 
-const LoadingPage = React.createClass({
-  propTypes: {
-    text: React.PropTypes.string,
-  },
+class LoadingPage extends React.Component {
+  static propTypes = {
+    text: PropTypes.string,
+  };
 
-  getDefaultProps() {
-    return {
-      text: 'Loading, please wait...',
-    };
-  },
+  static defaultProps = {
+    text: 'Loading, please wait...',
+  };
 
   componentDidMount() {
     disconnectedStyle.use();
     authStyle.use();
-  },
+  }
 
   componentWillUnmount() {
     disconnectedStyle.unuse();
     authStyle.unuse();
-  },
+  }
 
   render() {
     return (
@@ -42,7 +41,7 @@ const LoadingPage = React.createClass({
         </div>
       </DocumentTitle>
     );
-  },
-});
+  }
+}
 
 export default LoadingPage;

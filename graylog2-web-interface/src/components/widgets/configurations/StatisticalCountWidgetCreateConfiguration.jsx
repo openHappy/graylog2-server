@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Input } from 'components/bootstrap';
 import naturalSort from 'javascript-natural-sort';
 
@@ -7,36 +8,29 @@ import { CountWidgetCreateConfiguration } from 'components/widgets/configuration
 import StoreProvider from 'injection/StoreProvider';
 const FieldStatisticsStore = StoreProvider.getStore('FieldStatistics');
 
-const StatisticalCountWidgetCreateConfiguration = React.createClass({
-  propTypes: {
+class StatisticalCountWidgetCreateConfiguration extends React.Component {
+  static propTypes = {
     config: PropTypes.object.isRequired,
     fields: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
-  },
-
-  getInitialState() {
-    return {
-      sortedFields: this._sortFields(this.props.fields),
-      sortedStatisticalFunctions: this._sortStatisticalFunctions(FieldStatisticsStore.FUNCTIONS.keySeq().toJS()),
-    };
-  },
+  };
 
   componentWillReceiveProps(nextProps) {
     if (this.props.fields !== nextProps.fields) {
       this.setState({ sortedFields: this._sortFields(nextProps.fields) });
     }
-  },
+  }
 
-  _sortFields(fields) {
+  _sortFields = (fields) => {
     return fields.sort((a, b) => naturalSort(a.toLowerCase(), b.toLowerCase()));
-  },
+  };
 
-  _sortStatisticalFunctions(statisticalFunctions) {
+  _sortStatisticalFunctions = (statisticalFunctions) => {
     return statisticalFunctions.sort();
-  },
+  };
 
-  getInitialConfiguration() {
-    const countConfiguration = this.refs.countConfiguration.getInitialConfiguration();
+  getInitialConfiguration = () => {
+    const countConfiguration = this.countConfiguration.getInitialConfiguration();
     const initialConfiguration = {};
 
     Object.keys(countConfiguration).forEach(key => initialConfiguration[key] = countConfiguration[key]);
@@ -44,7 +38,12 @@ const StatisticalCountWidgetCreateConfiguration = React.createClass({
     initialConfiguration.stats_function = this.state.sortedStatisticalFunctions[0];
 
     return initialConfiguration;
-  },
+  };
+
+  state = {
+    sortedFields: this._sortFields(this.props.fields),
+    sortedStatisticalFunctions: this._sortStatisticalFunctions(FieldStatisticsStore.FUNCTIONS.keySeq().toJS()),
+  };
 
   render() {
     return (
@@ -80,10 +79,10 @@ const StatisticalCountWidgetCreateConfiguration = React.createClass({
           })}
         </Input>
 
-        <CountWidgetCreateConfiguration ref="countConfiguration" {...this.props} />
+        <CountWidgetCreateConfiguration ref={(countConfiguration) => { this.countConfiguration = countConfiguration; }} {...this.props} />
       </fieldset>
     );
-  },
-});
+  }
+}
 
 export default StatisticalCountWidgetCreateConfiguration;

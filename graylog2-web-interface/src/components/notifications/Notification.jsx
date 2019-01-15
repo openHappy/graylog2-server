@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import { Timestamp } from 'components/common';
@@ -7,15 +8,17 @@ import NotificationsFactory from 'logic/notifications/NotificationsFactory';
 import ActionsProvider from 'injection/ActionsProvider';
 const NotificationsActions = ActionsProvider.getActions('Notifications');
 
-const Notification = React.createClass({
-  propTypes: {
-    notification: React.PropTypes.object.isRequired,
-  },
-  _onClose() {
+class Notification extends React.Component {
+  static propTypes = {
+    notification: PropTypes.object.isRequired,
+  };
+
+  _onClose = () => {
     if (window.confirm('Really delete this notification?')) {
       NotificationsActions.delete(this.props.notification.type);
     }
-  },
+  };
+
   render() {
     const notification = this.props.notification;
     const notificationView = NotificationsFactory.getForNotification(notification);
@@ -36,7 +39,7 @@ const Notification = React.createClass({
         </div>
       </Alert>
     );
-  },
-});
+  }
+}
 
 export default Notification;

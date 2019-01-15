@@ -22,7 +22,7 @@
     <parent>
         <groupId>org.graylog</groupId>
         <artifactId>graylog-project-parent</artifactId>
-        <version>2.3.0-beta.2-SNAPSHOT</version>
+        <version>3.0.0-beta.3-SNAPSHOT</version>
         <relativePath>../graylog-project-parent</relativePath>
     </parent>
 
@@ -62,6 +62,14 @@
         <maven.build.timestamp.format>yyyyMMddHHmmss</maven.build.timestamp.format>
         <!-- to work around filtering bug, which makes maven.build.timestamp inaccessible -->
         <build.timestamp>${maven.build.timestamp}</build.timestamp>
+
+        <it.es.httpPort>19200</it.es.httpPort>
+        <it.es.transportPort>19300</it.es.transportPort>
+        <it.es.version>5.6.12</it.es.version>
+        <it.es.instanceCount>1</it.es.instanceCount>
+        <it.es.clusterName>test</it.es.clusterName>
+        <it.es.await>false</it.es.await>
+        <it.es.skip>false</it.es.skip>
     </properties>
 
     <dependencies>
@@ -94,10 +102,6 @@
         <dependency>
             <groupId>com.google.inject.extensions</groupId>
             <artifactId>guice-assistedinject</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.google.inject.extensions</groupId>
-            <artifactId>guice-multibindings</artifactId>
         </dependency>
         <!-- fishy -->
         <dependency>
@@ -169,6 +173,14 @@
             <groupId>com.fasterxml.jackson.jaxrs</groupId>
             <artifactId>jackson-jaxrs-json-provider</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-csv</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
@@ -185,6 +197,10 @@
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-jvm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-jmx</artifactId>
         </dependency>
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
@@ -266,19 +282,6 @@
             <artifactId>jest</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>net.java.dev.jna</groupId>
-            <artifactId>jna</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.kie</groupId>
-            <artifactId>kie-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.drools</groupId>
-            <artifactId>drools-compiler</artifactId>
-        </dependency>
 
         <dependency>
             <groupId>com.lmax</groupId>
@@ -301,8 +304,8 @@
         </dependency>
 
         <dependency>
-            <groupId>org.graylog2.repackaged</groupId>
-            <artifactId>grok</artifactId>
+            <groupId>io.krakens</groupId>
+            <artifactId>java-grok</artifactId>
         </dependency>
 
         <dependency>
@@ -314,8 +317,13 @@
             <artifactId>swagger-annotations</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.hibernate</groupId>
+            <groupId>org.hibernate.validator</groupId>
             <artifactId>hibernate-validator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+            <version>${bouncycastle.version}</version>
         </dependency>
 
         <!-- Logging dependencies -->
@@ -349,12 +357,20 @@
             <artifactId>assertj-joda-time</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.lordofthejars</groupId>
-            <artifactId>nosqlunit-elasticsearch2</artifactId>
+            <groupId>com.revinate</groupId>
+            <artifactId>assertj-json</artifactId>
         </dependency>
         <dependency>
             <groupId>com.lordofthejars</groupId>
             <artifactId>nosqlunit-mongodb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.joschi.nosqlunit</groupId>
+            <artifactId>nosqlunit-elasticsearch-http</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.fakemongo</groupId>
+            <artifactId>fongo</artifactId>
         </dependency>
         <dependency>
             <groupId>org.jukito</groupId>
@@ -393,7 +409,51 @@
 
         <dependency>
             <groupId>io.netty</groupId>
-            <artifactId>netty</artifactId>
+            <artifactId>netty-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-buffer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-handler</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-dns</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-resolver-dns</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-epoll</artifactId>
+            <classifier>linux-x86_64</classifier>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-kqueue</artifactId>
+            <classifier>osx-x86_64</classifier>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <classifier>osx-x86_64</classifier>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <classifier>linux-x86_64</classifier>
         </dependency>
 
         <dependency>
@@ -431,12 +491,41 @@
             <artifactId>java-semver</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.graylog.repackaged</groupId>
+            <artifactId>semver4j</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
         </dependency>
         <dependency>
             <groupId>javax.validation</groupId>
             <artifactId>validation-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.maxmind.geoip2</groupId>
+            <artifactId>geoip2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.graylog.cef</groupId>
+            <artifactId>cef-parser</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4-runtime</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jool-java-8</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup</groupId>
+            <artifactId>javapoet</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.freemarker</groupId>
+            <artifactId>freemarker</artifactId>
+            <version>${freemarker.version}</version>
         </dependency>
 
         <dependency>
@@ -461,8 +550,12 @@
         </dependency>
         <!-- used for sanity -->
         <dependency>
-            <groupId>com.google.code.findbugs</groupId>
-            <artifactId>jsr305</artifactId>
+            <groupId>net.jcip</groupId>
+            <artifactId>jcip-annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.auto.value</groupId>
+            <artifactId>auto-value-annotations</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.auto.value</groupId>
@@ -486,8 +579,27 @@
             <artifactId>assertj-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.jayway.awaitility</groupId>
+            <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.pkts</groupId>
+            <artifactId>pkts-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.test-framework</groupId>
+            <artifactId>jersey-test-framework-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.test-framework.providers</groupId>
+            <artifactId>jersey-test-framework-provider-grizzly2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jersey.test-framework.providers</groupId>
+            <artifactId>jersey-test-framework-provider-inmemory</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -512,41 +624,37 @@
                 </includes>
             </resource>
         </resources>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+            </testResource>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>**/*.properties</exclude>
+                </excludes>
+            </testResource>
+        </testResources>
         <pluginManagement>
             <plugins>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
-                    <version>1.12</version>
+                    <version>3.0.0</version>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>buildnumber-maven-plugin</artifactId>
                     <version>1.4</version>
                 </plugin>
-                <plugin>
-                    <groupId>com.versioneye</groupId>
-                    <artifactId>versioneye-maven-plugin</artifactId>
-                    <version>3.11.1</version>
-                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <configuration>
-                    <attach>true</attach>
-                    <appendAssemblyId>true</appendAssemblyId>
-                    <descriptors>
-                        <descriptor>src/main/assembly/graylog.xml</descriptor>
-                    </descriptors>
-                    <!-- to make it easier to collect assemblies, we put them into the _parent's_ build directory -->
-                    <!-- FIXME: Use a proper output directory. parent.parent.build.directory is a hack… -->
-                    <outputDirectory>${project.parent.parent.build.directory}/assembly</outputDirectory>
-                    <finalName>graylog-${project.version}-${maven.build.timestamp}</finalName>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -567,6 +675,16 @@
                                 <exclude>org/apache/commons/collections/functors/InvokerTransformer.class</exclude>
                             </excludes>
                         </filter>
+                        <!-- Bouncycastle's JARs are signed. When building a shaded JAR, either remove the signatures, or
+                             add dependency to the main JAR's manifest. Otherwise running the application will fail. -->
+                        <filter>
+                            <artifact>org.bouncycastle:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/*.SF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                            </excludes>
+                        </filter>
                     </filters>
                 </configuration>
                 <executions>
@@ -577,6 +695,30 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>generate-server-artifact</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <attach>true</attach>
+                    <appendAssemblyId>true</appendAssemblyId>
+                    <descriptors>
+                        <descriptor>src/main/assembly/graylog.xml</descriptor>
+                    </descriptors>
+                    <!-- to make it easier to collect assemblies, we put them into the _parent's_ build directory -->
+                    <!-- FIXME: Use a proper output directory. parent.parent.build.directory is a hack… -->
+                    <outputDirectory>${project.parent.parent.build.directory}/assembly</outputDirectory>
+                    <finalName>graylog-${project.version}-${maven.build.timestamp}</finalName>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -625,13 +767,16 @@
                 <artifactId>license-maven-plugin</artifactId>
             </plugin>
             <plugin>
-                <groupId>com.versioneye</groupId>
-                <artifactId>versioneye-maven-plugin</artifactId>
-                <configuration>
-                    <organisation>Graylog</organisation>
-                    <team>Owners</team>
-                    <projectId>570f6fbbd1a090000fe62b58</projectId>
-                </configuration>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>antlr</id>
+                        <goals>
+                            <goal>antlr4</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
@@ -703,21 +848,21 @@
                         <configuration>
                             <workingDirectory>${webInterface.path}</workingDirectory>
                             <nodeVersion>${nodejs.version}</nodeVersion>
-                            <npmVersion>${npm.version}</npmVersion>
+                            <yarnVersion>${yarn.version}</yarnVersion>
                         </configuration>
 
                         <executions>
                             <execution>
-                                <id>install node and npm</id>
+                                <id>install node and yarn</id>
                                 <goals>
-                                    <goal>install-node-and-npm</goal>
+                                    <goal>install-node-and-yarn</goal>
                                 </goals>
                             </execution>
 
                             <execution>
-                                <id>npm install</id>
+                                <id>yarn install</id>
                                 <goals>
-                                    <goal>npm</goal>
+                                    <goal>yarn</goal>
                                 </goals>
                                 <!-- Optional configuration which provides for running any npm command -->
                                 <configuration>
@@ -726,13 +871,88 @@
                             </execution>
 
                             <execution>
-                                <id>npm run build</id>
+                                <id>yarn run build</id>
                                 <goals>
-                                    <goal>npm</goal>
+                                    <goal>yarn</goal>
                                 </goals>
                                 <configuration>
                                     <arguments>run build</arguments>
                                 </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>yarn test</id>
+                                <goals>
+                                    <goal>yarn</goal>
+                                </goals>
+                                <phase>test</phase>
+                                <configuration>
+                                    <arguments>test</arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>integration-tests-elasticsearch-5</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>it.ElasticsearchVersion</name>
+                    <value>5</value>
+                </property>
+            </activation>
+            <properties>
+                <it.es.version>5.6.12</it.es.version>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <forkCount>1</forkCount>
+                            <skip>${it.es.skip}</skip>
+                            <!-- prevent ForkedBooter from stealing window focus on Mac OS -->
+                            <argLine>-Djava.awt.headless=true</argLine>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.github.alexcojocaru</groupId>
+                        <artifactId>elasticsearch-maven-plugin</artifactId>
+                        <configuration>
+                            <skip>${it.es.skip}</skip>
+                            <version>${it.es.version}</version>
+                            <clusterName>${it.es.clusterName}</clusterName>
+                            <httpPort>${it.es.httpPort}</httpPort>
+                            <transportPort>${it.es.transportPort}</transportPort>
+                            <instanceCount>${it.es.instanceCount}</instanceCount>
+                            <setAwait>${it.es.await}</setAwait>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>start-elasticsearch</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>runforked</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop-elasticsearch</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                </goals>
                             </execution>
                         </executions>
                     </plugin>

@@ -1,15 +1,17 @@
+import PropTypes from 'prop-types';
 import React from 'react';
-import { Row, Col } from 'react-bootstrap';
+import { Button, Row, Col } from 'react-bootstrap';
+import { LinkContainer } from 'react-router-bootstrap';
+import Routes from 'routing/Routes';
 import { PluginStore } from 'graylog-web-plugin/plugin';
 import { ContentPackMarker } from 'components/common';
 
 import Styles from './ConfigSummary.css';
 
-const Cache = React.createClass({
-
-  propTypes: {
-    cache: React.PropTypes.object.isRequired,
-  },
+class Cache extends React.Component {
+  static propTypes = {
+    cache: PropTypes.object.isRequired,
+  };
 
   render() {
     const plugins = {};
@@ -43,15 +45,14 @@ const Cache = React.createClass({
           <div className={Styles.config}>
             {React.createElement(summary, { cache: cache })}
           </div>
+          <LinkContainer to={Routes.SYSTEM.LOOKUPTABLES.CACHES.edit(cache.name)}>
+            <Button bsStyle="success">Edit</Button>
+          </LinkContainer>
         </Col>
-        <Col md={6}>
-          <h3>TODO: Cached data</h3>
-          <p>Use this to inspect the lookup table cache.</p>
-        </Col>
+        <Col md={6} />
       </Row>
     );
-  },
-
-});
+  }
+}
 
 export default Cache;

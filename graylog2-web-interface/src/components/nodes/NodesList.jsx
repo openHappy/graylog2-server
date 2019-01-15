@@ -1,4 +1,6 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { Row, Col } from 'react-bootstrap';
 
@@ -9,14 +11,19 @@ import StoreProvider from 'injection/StoreProvider';
 const NodesStore = StoreProvider.getStore('Nodes');
 const ClusterOverviewStore = StoreProvider.getStore('ClusterOverview');
 
-const NodesList = React.createClass({
+const NodesList = createReactClass({
+  displayName: 'NodesList',
+
   propTypes: {
     permissions: PropTypes.array.isRequired,
   },
+
   mixins: [Reflux.connect(NodesStore), Reflux.connect(ClusterOverviewStore)],
+
   _isLoading() {
     return !(this.state.nodes && this.state.clusterOverview);
   },
+
   _formatNodes(nodes, clusterOverview) {
     const nodeIDs = Object.keys(nodes);
 
@@ -24,6 +31,7 @@ const NodesList = React.createClass({
       return <NodeListItem key={nodeID} node={nodes[nodeID]} systemOverview={clusterOverview[nodeID]} />;
     });
   },
+
   render() {
     if (this._isLoading()) {
       return <Spinner />;

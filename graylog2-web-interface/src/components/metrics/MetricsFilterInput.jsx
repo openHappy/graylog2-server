@@ -1,12 +1,28 @@
 import React from 'react';
+import PropTypes from 'prop-types';
+import { FormControl } from 'react-bootstrap';
 
-const MetricsFilterInput = React.createClass({
+class MetricsFilterInput extends React.Component {
+  static propTypes = {
+    filter: PropTypes.string.isRequired,
+    onChange: PropTypes.func.isRequired,
+  };
+
+  handleChange = (event) => {
+    this.props.onChange(event.target.value);
+  };
+
   render() {
+    const { filter } = this.props;
     return (
-      <input type="text" className="metrics-filter input-lg form-control"
-             style={{ width: '100%' }} placeholder="Type a metric name to filter..." {...this.props} />
+      <FormControl type="text"
+                   className="metrics-filter"
+                   bsSize="large"
+                   placeholder="Type a metric name to filter&hellip;"
+                   value={filter}
+                   onChange={this.handleChange} />
     );
-  },
-});
+  }
+}
 
 export default MetricsFilterInput;

@@ -5,73 +5,96 @@ import { PluginStore } from 'graylog-web-plugin/plugin';
 import App from 'routing/App';
 import AppWithSearchBar from 'routing/AppWithSearchBar';
 import AppWithoutSearchBar from 'routing/AppWithoutSearchBar';
+import AppWithGlobalNotifications from 'routing/AppWithGlobalNotifications';
 import history from 'util/History';
 import URLUtils from 'util/URLUtils';
 
 import Routes from 'routing/Routes';
 
-import StartPage from 'pages/StartPage';
-import SearchPage from 'pages/SearchPage';
-import ShowMessagePage from 'pages/ShowMessagePage';
-import StreamsPage from 'pages/StreamsPage';
-import AlertsPage from 'pages/AlertsPage';
-import ShowAlertPage from 'pages/ShowAlertPage';
-import AlertConditionsPage from 'pages/AlertConditionsPage';
-import AlertNotificationsPage from 'pages/AlertNotificationsPage';
-import NewAlertConditionPage from 'pages/NewAlertConditionPage';
-import NewAlertNotificationPage from 'pages/NewAlertNotificationPage';
-import EditAlertConditionPage from 'pages/EditAlertConditionPage';
-import StreamEditPage from 'pages/StreamEditPage';
-import StreamOutputsPage from 'pages/StreamOutputsPage';
-import StreamSearchPage from 'pages/StreamSearchPage';
-import DashboardsPage from 'pages/DashboardsPage';
-import ShowDashboardPage from 'pages/ShowDashboardPage';
-import SourcesPage from 'pages/SourcesPage';
-import InputsPage from 'pages/InputsPage';
-import NodeInputsPage from 'pages/NodeInputsPage';
-import ExtractorsPage from 'pages/ExtractorsPage';
-import CreateExtractorsPage from 'pages/CreateExtractorsPage';
-import EditExtractorsPage from 'pages/EditExtractorsPage';
-import ImportExtractorsPage from 'pages/ImportExtractorsPage';
-import ExportExtractorsPage from 'pages/ExportExtractorsPage';
-import SystemOutputsPage from 'pages/SystemOutputsPage';
-import RolesPage from 'pages/RolesPage';
-import ContentPacksPage from 'pages/ContentPacksPage';
-import ExportContentPackPage from 'pages/ExportContentPackPage';
-import UsersPage from 'pages/UsersPage';
-import CreateUsersPage from 'pages/CreateUsersPage';
-import EditUsersPage from 'pages/EditUsersPage';
-import GrokPatternsPage from 'pages/GrokPatternsPage';
-import SystemOverviewPage from 'pages/SystemOverviewPage';
-import IndexerFailuresPage from 'pages/IndexerFailuresPage';
-import IndicesPage from 'pages/IndicesPage';
-import LoggersPage from 'pages/LoggersPage';
-import GettingStartedPage from 'pages/GettingStartedPage';
-import ShowMetricsPage from 'pages/ShowMetricsPage';
-import ShowNodePage from 'pages/ShowNodePage';
-import NodesPage from 'pages/NodesPage';
-import ThreadDumpPage from 'pages/ThreadDumpPage';
-import ConfigurationsPage from 'pages/ConfigurationsPage';
-import NotFoundPage from 'pages/NotFoundPage';
-import AuthenticationPage from 'pages/AuthenticationPage';
-import IndexSetPage from 'pages/IndexSetPage';
-import IndexSetConfigurationPage from 'pages/IndexSetConfigurationPage';
-import IndexSetCreationPage from 'pages/IndexSetCreationPage';
-import LUTTablesPage from 'pages/LUTTablesPage';
-import LUTCachesPage from 'pages/LUTCachesPage';
-import LUTDataAdaptersPage from 'pages/LUTDataAdaptersPage';
+import {
+  StartPage,
+  DelegatedSearchPage,
+  ShowMessagePage,
+  StreamsPage,
+  AlertsPage,
+  ShowAlertPage,
+  AlertConditionsPage,
+  AlertNotificationsPage,
+  NewAlertConditionPage,
+  NewAlertNotificationPage,
+  EditAlertConditionPage,
+  StreamEditPage,
+  StreamOutputsPage,
+  StreamSearchPage,
+  DashboardsPage,
+  ShowDashboardPage,
+  SourcesPage,
+  InputsPage,
+  NodeInputsPage,
+  ExtractorsPage,
+  CreateExtractorsPage,
+  EditExtractorsPage,
+  ImportExtractorsPage,
+  ExportExtractorsPage,
+  SystemOutputsPage,
+  RolesPage,
+  ContentPacksPage,
+  ShowContentPackPage,
+  CreateContentPackPage,
+  EditContentPackPage,
+  UsersPage,
+  CreateUsersPage,
+  EditUsersPage,
+  EditTokensPage,
+  GrokPatternsPage,
+  SystemOverviewPage,
+  IndexerFailuresPage,
+  IndicesPage,
+  LoggersPage,
+  GettingStartedPage,
+  ShowMetricsPage,
+  ShowNodePage,
+  NodesPage,
+  ThreadDumpPage,
+  ConfigurationsPage,
+  NotFoundPage,
+  AuthenticationPage,
+  IndexSetPage,
+  IndexSetConfigurationPage,
+  IndexSetCreationPage,
+  LUTTablesPage,
+  LUTCachesPage,
+  LUTDataAdaptersPage,
+  PipelinesOverviewPage,
+  PipelineDetailsPage,
+  SimulatorPage,
+  RulesPage,
+  RuleDetailsPage,
+  EnterprisePage,
+  SidecarEditConfigurationPage,
+  SidecarStatusPage,
+  SidecarAdministrationPage,
+  SidecarEditCollectorPage,
+  SidecarNewCollectorPage,
+  SidecarsPage,
+  SidecarConfigurationPage,
+  SidecarNewConfigurationPage,
+  StreamAlertsOverviewPage,
+} from 'pages';
 
-const AppRouter = React.createClass({
-  render() {
-    const pluginRoutes = PluginStore.exports('routes').map((pluginRoute) => {
-      return <Route key={pluginRoute.component.displayName} path={URLUtils.appPrefixed(pluginRoute.path)} component={pluginRoute.component} />;
-    });
-    return (
-      <Router history={history}>
-        <Route path={Routes.STARTPAGE} component={App}>
+const AppRouter = () => {
+  const pluginRoutes = PluginStore.exports('routes').map((pluginRoute) => {
+    return (<Route key={`${pluginRoute.path}-${pluginRoute.component.displayName}`}
+                  path={URLUtils.appPrefixed(pluginRoute.path)}
+                  component={pluginRoute.component} />);
+  });
+  return (
+    <Router history={history}>
+      <Route path={Routes.STARTPAGE} component={App}>
+        <Route component={AppWithGlobalNotifications}>
           <IndexRoute component={StartPage} />
           <Route component={AppWithSearchBar}>
-            <Route path={Routes.SEARCH} component={SearchPage} />
+            <Route path={Routes.SEARCH} component={DelegatedSearchPage} />
             <Route path={Routes.message_show(':index', ':messageId')} component={ShowMessagePage} />
             <Route path={Routes.SOURCES} component={SourcesPage} />
             <Route path={Routes.stream_search(':streamId')} component={StreamSearchPage} />
@@ -82,6 +105,7 @@ const AppRouter = React.createClass({
             <Route path={Routes.STREAMS} component={StreamsPage} />
             <Route path={Routes.stream_edit(':streamId')} component={StreamEditPage} />
             <Route path={Routes.stream_outputs(':streamId')} component={StreamOutputsPage} />
+            <Route path={Routes.stream_alerts(':streamId')} component={StreamAlertsOverviewPage} />
             <Route path={Routes.ALERTS.LIST} component={AlertsPage} />
             <Route path={Routes.ALERTS.CONDITIONS} component={AlertConditionsPage} />
             <Route path={Routes.ALERTS.NEW_CONDITION} component={NewAlertConditionPage} />
@@ -101,7 +125,9 @@ const AppRouter = React.createClass({
             <Route path={Routes.export_extractors(':nodeId', ':inputId')} component={ExportExtractorsPage} />
             <Route path={Routes.SYSTEM.CONFIGURATIONS} component={ConfigurationsPage} />
             <Route path={Routes.SYSTEM.CONTENTPACKS.LIST} component={ContentPacksPage} />
-            <Route path={Routes.SYSTEM.CONTENTPACKS.EXPORT} component={ExportContentPackPage} />
+            <Route path={Routes.SYSTEM.CONTENTPACKS.CREATE} component={CreateContentPackPage} />
+            <Route path={Routes.SYSTEM.CONTENTPACKS.edit(':contentPackId', ':contentPackRev')} component={EditContentPackPage} />
+            <Route path={Routes.SYSTEM.CONTENTPACKS.show(':contentPackId')} component={ShowContentPackPage} />
             <Route path={Routes.SYSTEM.GROKPATTERNS} component={GrokPatternsPage} />
             <Route path={Routes.SYSTEM.INDICES.LIST} component={IndicesPage} />
             <Route path={Routes.SYSTEM.INDEX_SETS.CREATE} component={IndexSetCreationPage} />
@@ -124,6 +150,12 @@ const AppRouter = React.createClass({
             <Route path={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.show(':adapterName')} component={LUTDataAdaptersPage} action="show" />
             <Route path={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.edit(':adapterName')} component={LUTDataAdaptersPage} action="edit" />
 
+            <Route path={Routes.SYSTEM.PIPELINES.OVERVIEW} component={PipelinesOverviewPage} />
+            <Route path={Routes.SYSTEM.PIPELINES.RULES} component={RulesPage} />
+            <Route path={Routes.SYSTEM.PIPELINES.RULE(':ruleId')} component={RuleDetailsPage} />
+            <Route path={Routes.SYSTEM.PIPELINES.SIMULATOR} component={SimulatorPage} />
+            <Route path={Routes.SYSTEM.PIPELINES.PIPELINE(':pipelineId')} component={PipelineDetailsPage} />
+
             <Route path={Routes.SYSTEM.LOGGING} component={LoggersPage} />
             <Route path={Routes.SYSTEM.METRICS(':nodeId')} component={ShowMetricsPage} />
             <Route path={Routes.SYSTEM.NODES.LIST} component={NodesPage} />
@@ -134,19 +166,33 @@ const AppRouter = React.createClass({
               <Route path={Routes.SYSTEM.AUTHENTICATION.USERS.LIST} component={UsersPage} />
               <Route path={Routes.SYSTEM.AUTHENTICATION.USERS.CREATE} component={CreateUsersPage} />
               <Route path={Routes.SYSTEM.AUTHENTICATION.USERS.edit(':username')} component={EditUsersPage} />
+              <Route path={Routes.SYSTEM.AUTHENTICATION.USERS.TOKENS.edit(':username')} component={EditTokensPage} />
               <Route path={Routes.SYSTEM.AUTHENTICATION.ROLES} component={RolesPage} />
               <Route path={Routes.SYSTEM.AUTHENTICATION.PROVIDERS.CONFIG} />
               <Route path={Routes.SYSTEM.AUTHENTICATION.PROVIDERS.provider(':name')} />
             </Route>
             <Route path={Routes.SYSTEM.OVERVIEW} component={SystemOverviewPage} />
             <Route path={Routes.SYSTEM.THREADDUMP(':nodeId')} component={ThreadDumpPage} />
+            <Route path={Routes.SYSTEM.ENTERPRISE} component={EnterprisePage} />
+
+            <Route path={Routes.SYSTEM.SIDECARS.OVERVIEW} component={SidecarsPage} />
+            <Route path={Routes.SYSTEM.SIDECARS.STATUS(':sidecarId')} component={SidecarStatusPage} />
+            <Route path={Routes.SYSTEM.SIDECARS.ADMINISTRATION} component={SidecarAdministrationPage} />
+            <Route path={Routes.SYSTEM.SIDECARS.CONFIGURATION} component={SidecarConfigurationPage} />
+            <Route path={Routes.SYSTEM.SIDECARS.NEW_CONFIGURATION} component={SidecarNewConfigurationPage} />
+            <Route path={Routes.SYSTEM.SIDECARS.EDIT_CONFIGURATION(':configurationId')} component={SidecarEditConfigurationPage} />
+            <Route path={Routes.SYSTEM.SIDECARS.NEW_COLLECTOR} component={SidecarNewCollectorPage} />
+            <Route path={Routes.SYSTEM.SIDECARS.EDIT_COLLECTOR(':collectorId')} component={SidecarEditCollectorPage} />
             {pluginRoutes}
-            <Route path="*" component={NotFoundPage} />
           </Route>
         </Route>
-      </Router>
-    );
-  },
-});
+        <Route component={AppWithoutSearchBar}>
+          <Route path={Routes.NOTFOUND} component={NotFoundPage} />
+          <Route path="*" component={NotFoundPage} />
+        </Route>
+      </Route>
+    </Router>
+  );
+};
 
 export default AppRouter;

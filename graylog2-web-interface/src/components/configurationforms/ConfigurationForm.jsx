@@ -1,5 +1,8 @@
 import $ from 'jquery';
+import PropTypes from 'prop-types';
 import React from 'react';
+
+import createReactClass from 'create-react-class';
 
 import BootstrapModalForm from 'components/bootstrap/BootstrapModalForm';
 import {
@@ -11,17 +14,19 @@ import {
   TitleField,
 } from 'components/configurationforms';
 
-const ConfigurationForm = React.createClass({
+const ConfigurationForm = createReactClass({
+  displayName: 'ConfigurationForm',
+
   propTypes: {
-    cancelAction: React.PropTypes.func,
-    children: React.PropTypes.node,
-    helpBlock: React.PropTypes.node,
-    includeTitleField: React.PropTypes.bool,
-    submitAction: React.PropTypes.func.isRequired,
-    title: React.PropTypes.node,
-    titleValue: React.PropTypes.string,
-    typeName: React.PropTypes.string,
-    values: React.PropTypes.object,
+    cancelAction: PropTypes.func,
+    children: PropTypes.node,
+    helpBlock: PropTypes.node,
+    includeTitleField: PropTypes.bool,
+    submitAction: PropTypes.func.isRequired,
+    title: PropTypes.node,
+    titleValue: PropTypes.string,
+    typeName: PropTypes.string,
+    values: PropTypes.object,
   },
 
   getDefaultProps() {
@@ -31,15 +36,18 @@ const ConfigurationForm = React.createClass({
       values: {},
     };
   },
+
   getInitialState() {
     return this._copyStateFromProps(this.props);
   },
+
   componentWillReceiveProps(props) {
     const newState = this._copyStateFromProps(props);
     const values = this.state ? this.state.values : {};
     newState.values = $.extend(newState.values, values);
     this.setState(newState);
   },
+
   getValue() {
     const data = {};
     const values = this.state.values;
@@ -56,6 +64,7 @@ const ConfigurationForm = React.createClass({
 
     return data;
   },
+
   _copyStateFromProps(props) {
     const effectiveTitleValue = (this.state && this.state.titleValue !== undefined ? this.state.titleValue : props.titleValue);
     const defaultValues = {};
@@ -72,32 +81,46 @@ const ConfigurationForm = React.createClass({
       titleValue: effectiveTitleValue,
     };
   },
+
   _sortByOptionality(x1, x2) {
-    return (this.state.configFields[x1].is_optional - this.state.configFields[x2].is_optional);
+    let diff = this.state.configFields[x1.name].is_optional - this.state.configFields[x2.name].is_optional;
+
+    if (!diff) {
+      // Sort equal fields stably
+      diff = x1.pos - x2.pos;
+    }
+
+    return diff;
   },
+
   _save() {
     const data = this.getValue();
 
     this.props.submitAction(data);
-    this.refs.modal.close();
+    this.modal.close();
   },
+
   open() {
-    this.refs.modal.open();
+    this.modal.open();
   },
+
   _closeModal() {
     this.setState($.extend(this.getInitialState(), { titleValue: this.props.titleValue }));
     if (this.props.cancelAction) {
       this.props.cancelAction();
     }
   },
+
   _handleTitleChange(field, value) {
     this.setState({ titleValue: value });
   },
+
   _handleChange(field, value) {
     const values = this.state.values;
     values[field] = value;
     this.setState({ values: values });
   },
+
   _renderConfigField(configField, key, autoFocus) {
     const value = this.state.values[key];
     const typeName = this.props.typeName;
@@ -123,6 +146,7 @@ const ConfigurationForm = React.createClass({
         return null;
     }
   },
+
   render() {
     const typeName = this.props.typeName;
     const title = this.props.title;
@@ -136,9 +160,12 @@ const ConfigurationForm = React.createClass({
       shouldAutoFocus = false;
     }
 
-    const configFieldKeys = $.map(this.state.configFields, (v, k) => k).sort(this._sortByOptionality);
+    const configFieldKeys = $.map(this.state.configFields, (field, name) => name)
+      .map((name, pos) => ({ name: name, pos: pos }))
+      .sort(this._sortByOptionality);
+
     const configFields = configFieldKeys.map((key) => {
-      const configField = this._renderConfigField(this.state.configFields[key], key, shouldAutoFocus);
+      const configField = this._renderConfigField(this.state.configFields[key.name], key.name, shouldAutoFocus);
       if (shouldAutoFocus) {
         shouldAutoFocus = false;
       }
@@ -146,7 +173,7 @@ const ConfigurationForm = React.createClass({
     });
 
     return (
-      <BootstrapModalForm ref="modal"
+      <BootstrapModalForm ref={(modal) => { this.modal = modal; }}
                           title={title}
                           onCancel={this._closeModal}
                           onSubmitForm={this._save}

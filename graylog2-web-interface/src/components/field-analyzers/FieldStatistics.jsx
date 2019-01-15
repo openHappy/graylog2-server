@@ -1,4 +1,6 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import Immutable from 'immutable';
 import { Button } from 'react-bootstrap';
@@ -12,15 +14,18 @@ const RefreshStore = StoreProvider.getStore('Refresh');
 import NumberUtils from 'util/NumberUtils';
 import UserNotification from 'util/UserNotification';
 
-const FieldStatistics = React.createClass({
+const FieldStatistics = createReactClass({
+  displayName: 'FieldStatistics',
+
   propTypes: {
     permissions: PropTypes.arrayOf(PropTypes.string).isRequired,
-    query: React.PropTypes.string.isRequired,
-    rangeType: React.PropTypes.string.isRequired,
-    rangeParams: React.PropTypes.object.isRequired,
+    query: PropTypes.string.isRequired,
+    rangeType: PropTypes.string.isRequired,
+    rangeParams: PropTypes.object.isRequired,
     stream: PropTypes.object,
-    forceFetch: React.PropTypes.bool,
+    forceFetch: PropTypes.bool,
   },
+
   mixins: [Reflux.listenTo(RefreshStore, '_setupTimer', '_setupTimer')],
 
   getInitialState() {
@@ -89,6 +94,7 @@ const FieldStatistics = React.createClass({
       });
     }
   },
+
   _changeSortOrder(column) {
     if (this.state.sortBy === column) {
       this.setState({ sortDescending: !this.state.sortDescending });
@@ -100,6 +106,7 @@ const FieldStatistics = React.createClass({
   _resetStatus() {
     this.setState(this.getInitialState());
   },
+
   _renderStatistics() {
     const statistics = [];
 
@@ -139,6 +146,7 @@ const FieldStatistics = React.createClass({
 
     return statistics;
   },
+
   _renderStatisticalFunctionsHeaders() {
     return FieldStatisticsStore.FUNCTIONS.keySeq().map((statFunction) => {
       return (
@@ -148,12 +156,14 @@ const FieldStatistics = React.createClass({
       );
     });
   },
+
   _getHeaderCaret(column) {
     if (this.state.sortBy !== column) {
       return null;
     }
     return this.state.sortDescending ? <i className="fa fa-caret-down" /> : <i className="fa fa-caret-up" />;
   },
+
   render() {
     let content;
 
@@ -163,12 +173,10 @@ const FieldStatistics = React.createClass({
           <div className="pull-right">
             <AddToDashboardMenu title="Add to dashboard"
                                 widgetType={this.WIDGET_TYPE}
-                                bsStyle="default"
                                 fields={this.state.fieldStatistics.keySeq().toJS()}
                                 pullRight
                                 permissions={this.props.permissions}>
-
-              <Button bsSize="small" onClick={() => this._resetStatus()}>Dismiss</Button>
+              <Button bsSize="small" onClick={() => this._resetStatus()}><i className="fa fa-close" /></Button>
             </AddToDashboardMenu>
           </div>
           <h1>Field Statistics</h1>

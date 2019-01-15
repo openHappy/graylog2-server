@@ -1,15 +1,20 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
-const ContentPackMarker = React.createClass({
-  propTypes: {
-    contentPack: React.PropTypes.string,
-    marginLeft: React.PropTypes.number,
-    marginRight: React.PropTypes.number,
-  },
+/**
+ * Adds an icon to an entity that was created by a content pack.
+ */
+class ContentPackMarker extends React.Component {
+  static propTypes = {
+    /** Content pack key of the entity's object. When set, the component will render the content pack marker. */
+    contentPack: PropTypes.string,
+    /** Margin-left the marker should use. */
+    marginLeft: PropTypes.number,
+    /** Margin-right the marker should use. */
+    marginRight: PropTypes.number,
+  };
 
-  getDefaultProps() {
-    return { contentPack: undefined, marginLeft: 0, marginRight: 0 };
-  },
+  static defaultProps = { contentPack: undefined, marginLeft: 0, marginRight: 0 };
 
   render() {
     const style = { marginLeft: this.props.marginLeft, marginRight: this.props.marginRight };
@@ -19,7 +24,7 @@ const ContentPackMarker = React.createClass({
     }
 
     return null;
-  },
-});
+  }
+}
 
 export default ContentPackMarker;

@@ -1,9 +1,21 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 
-const TimeUnit = React.createClass({
+import createReactClass from 'create-react-class';
+
+/**
+ * Component that renders a time value given in a certain unit.
+ * It can also use 0 as never if `zeroIsNever` is set.
+ */
+const TimeUnit = createReactClass({
+  displayName: 'TimeUnit',
+
   propTypes: {
+    /** Value to display. */
     value: PropTypes.number.isRequired,
+    /** Unit used in the value. */
     unit: PropTypes.oneOf(['NANOSECONDS', 'MICROSECONDS', 'MILLISECONDS', 'SECONDS', 'MINUTES', 'HOURS', 'DAYS']).isRequired,
+    /** Specifies if zero should be displayed as never or not. */
     zeroIsNever: PropTypes.bool,
   },
 

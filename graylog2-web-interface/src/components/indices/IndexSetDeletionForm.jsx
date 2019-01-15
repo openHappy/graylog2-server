@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Alert, Row, Col } from 'react-bootstrap';
 import { Input } from 'components/bootstrap';
@@ -8,20 +9,20 @@ import naturalSort from 'javascript-natural-sort';
 import CombinedProvider from 'injection/CombinedProvider';
 const { StreamsStore } = CombinedProvider.get('Streams');
 
-const IndexSetDeletionForm = React.createClass({
-  propTypes: {
-    indexSet: React.PropTypes.object.isRequired,
-    onDelete: React.PropTypes.func.isRequired,
-  },
+class IndexSetDeletionForm extends React.Component {
+  static propTypes = {
+    indexSet: PropTypes.object.isRequired,
+    onDelete: PropTypes.func.isRequired,
+  };
 
-  getInitialState() {
-    return {
-      assignedStreams: undefined,
-      deleteIndices: true,
-    };
-  },
+  state = {
+    assignedStreams: undefined,
+    deleteIndices: true,
+  };
 
-  _onModalOpen() {
+  forms = {};
+
+  _onModalOpen = () => {
     StreamsStore.load((streams) => {
       const assignedStreams = [];
 
@@ -33,29 +34,29 @@ const IndexSetDeletionForm = React.createClass({
 
       this.setState({ assignedStreams: assignedStreams });
     });
-  },
+  };
 
-  _onRemoveClick(e) {
+  _onRemoveClick = (e) => {
     this.setState({ deleteIndices: e.target.checked });
-  },
+  };
 
-  open() {
-    this.refs[`index-set-deletion-modal-${this.props.indexSet.id}`].open();
-  },
+  open = () => {
+    this.forms[`index-set-deletion-modal-${this.props.indexSet.id}`].open();
+  };
 
-  close() {
-    this.refs[`index-set-deletion-modal-${this.props.indexSet.id}`].close();
-  },
+  close = () => {
+    this.forms[`index-set-deletion-modal-${this.props.indexSet.id}`].close();
+  };
 
-  _isLoading() {
+  _isLoading = () => {
     return !this.state.assignedStreams;
-  },
+  };
 
-  _isDeletable() {
+  _isDeletable = () => {
     return !this._isLoading() && this.state.assignedStreams.length < 1 && !this.props.indexSet.default;
-  },
+  };
 
-  _modalContent() {
+  _modalContent = () => {
     if (this._isLoading()) {
       return <Spinner text="Loading assigned streams..." />;
     }
@@ -101,7 +102,8 @@ const IndexSetDeletionForm = React.createClass({
     return (
       <Row>
         <Col md={12}>
-          <Input type="checkbox"
+          <Input id="remove-data-checkbox"
+                 type="checkbox"
                  label="Remove all data for this index set?"
                  help={<span>All indices related to this index set will be deleted from Elasticsearch.</span>}
                  checked={this.state.deleteIndices}
@@ -109,19 +111,19 @@ const IndexSetDeletionForm = React.createClass({
         </Col>
       </Row>
     );
-  },
+  };
 
-  _onDelete(e) {
+  _onDelete = (e) => {
     e.preventDefault();
 
     if (this._isDeletable()) {
       this.props.onDelete(this.props.indexSet, this.state.deleteIndices);
     }
-  },
+  };
 
   render() {
     return (
-      <BootstrapModalForm ref={`index-set-deletion-modal-${this.props.indexSet.id}`}
+      <BootstrapModalForm ref={(elem) => { this.forms[`index-set-deletion-modal-${this.props.indexSet.id}`] = elem; }}
                           title={`Delete index set "${this.props.indexSet.title}"?`}
                           onModalOpen={this._onModalOpen}
                           onSubmitForm={this._onDelete}
@@ -130,7 +132,7 @@ const IndexSetDeletionForm = React.createClass({
         {this._modalContent()}
       </BootstrapModalForm>
     );
-  },
-});
+  }
+}
 
 export default IndexSetDeletionForm;

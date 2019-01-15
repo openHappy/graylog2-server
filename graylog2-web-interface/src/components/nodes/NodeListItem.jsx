@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Col } from 'react-bootstrap';
 
 import { EntityListItem, LinkToNode } from 'components/common';
@@ -8,11 +9,12 @@ import JvmHeapUsage from './JvmHeapUsage';
 import JournalState from './JournalState';
 import NodeThroughput from 'components/throughput/NodeThroughput';
 
-const NodeListItem = React.createClass({
-  propTypes: {
+class NodeListItem extends React.Component {
+  static propTypes = {
     node: PropTypes.object.isRequired,
     systemOverview: PropTypes.object,
-  },
+  };
+
   render() {
     const node = this.props.node;
     const title = <LinkToNode nodeId={node.node_id} />;
@@ -48,7 +50,7 @@ const NodeListItem = React.createClass({
                       actions={actions}
                       contentRow={additionalContent} />
     );
-  },
-});
+  }
+}
 
 export default NodeListItem;

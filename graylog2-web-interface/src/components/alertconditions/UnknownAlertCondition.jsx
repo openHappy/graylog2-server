@@ -1,14 +1,15 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Alert, Col, DropdownButton, MenuItem } from 'react-bootstrap';
 
 import { EntityListItem } from 'components/common';
 
-const UnknownAlertCondition = React.createClass({
-  propTypes: {
-    alertCondition: React.PropTypes.object.isRequired,
-    stream: React.PropTypes.object,
-    onDelete: React.PropTypes.func.isRequired,
-  },
+class UnknownAlertCondition extends React.Component {
+  static propTypes = {
+    alertCondition: PropTypes.object.isRequired,
+    stream: PropTypes.object,
+    onDelete: PropTypes.func.isRequired,
+  };
 
   render() {
     const condition = this.props.alertCondition;
@@ -35,7 +36,7 @@ const UnknownAlertCondition = React.createClass({
                       actions={actions}
                       contentRow={content} />
     );
-  },
-});
+  }
+}
 
 export default UnknownAlertCondition;

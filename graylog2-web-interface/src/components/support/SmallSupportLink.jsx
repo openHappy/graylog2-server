@@ -1,9 +1,11 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
-const SmallSupportLink = React.createClass({
-  propTypes: {
-    children: React.PropTypes.node.isRequired,
-  },
+class SmallSupportLink extends React.Component {
+  static propTypes = {
+    children: PropTypes.node.isRequired,
+  };
+
   render() {
     return (
       <p className="description-tooltips description-tooltips-small">
@@ -16,7 +18,7 @@ const SmallSupportLink = React.createClass({
         </strong>
       </p>
     );
-  },
-});
+  }
+}
 
 export default SmallSupportLink;

@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
@@ -11,31 +12,29 @@ import Routes from 'routing/Routes';
 import DateTime from 'logic/datetimes/DateTime';
 import UserNotification from 'util/UserNotification';
 
-const AlertMessages = React.createClass({
-  propTypes: {
-    alert: React.PropTypes.object.isRequired,
-    stream: React.PropTypes.object.isRequired,
-  },
+class AlertMessages extends React.Component {
+  static propTypes = {
+    alert: PropTypes.object.isRequired,
+    stream: PropTypes.object.isRequired,
+  };
 
-  getInitialState() {
-    return {
-      messages: undefined,
-      totalMessages: 0,
-    };
-  },
+  state = {
+    messages: undefined,
+    totalMessages: 0,
+  };
 
   componentDidMount() {
     this._loadData();
-  },
+  }
 
-  PAGE_SIZE: 20,
+  PAGE_SIZE = 20;
 
-  _getFrom() {
+  _getFrom = () => {
     const momentFrom = DateTime.parseFromString(this.props.alert.triggered_at).toMoment();
     return momentFrom.subtract(1, 'minute').toISOString();
-  },
+  };
 
-  _getTo() {
+  _getTo = () => {
     const alert = this.props.alert;
     let momentTo;
     if (alert.is_interval) {
@@ -44,9 +43,9 @@ const AlertMessages = React.createClass({
       momentTo = DateTime.parseFromString(alert.triggered_at).toMoment().add(1, 'minute');
     }
     return momentTo.toISOString();
-  },
+  };
 
-  _loadData(page) {
+  _loadData = (page) => {
     const searchParams = {
       from: this._getFrom(),
       to: this._getTo(),
@@ -66,17 +65,17 @@ const AlertMessages = React.createClass({
           'Could not get messages during alert');
       },
     );
-  },
+  };
 
-  _isLoading() {
+  _isLoading = () => {
     return !this.state.messages;
-  },
+  };
 
-  _onPageChange(page) {
+  _onPageChange = (page) => {
     this._loadData(page);
-  },
+  };
 
-  _formatMessages(messages) {
+  _formatMessages = (messages) => {
     return messages
       .map((message) => {
         return (
@@ -86,9 +85,9 @@ const AlertMessages = React.createClass({
           </tr>
         );
       });
-  },
+  };
 
-  _formatAlertTimeRange() {
+  _formatAlertTimeRange = () => {
     return (
       <span>
         (
@@ -97,7 +96,7 @@ const AlertMessages = React.createClass({
         )
       </span>
     );
-  },
+  };
 
   render() {
     const timeRange = {
@@ -162,7 +161,7 @@ const AlertMessages = React.createClass({
         </PaginatedList>
       </div>
     );
-  },
-});
+  }
+}
 
 export default AlertMessages;

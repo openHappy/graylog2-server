@@ -30,10 +30,8 @@ import java.util.Map;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 public class LookupTableExtractor extends Extractor {
-    private static final String CONFIG_LUT_NAME = "lookup_table_name";
-    private final String sourceField;
-    private final String targetField;
     private final LookupTableService.Function lookupTable;
+    public static final String CONFIG_LUT_NAME = "lookup_table_name";
 
     public LookupTableExtractor(final MetricRegistry metricRegistry,
                                 final LookupTableService lookupTableService,
@@ -49,9 +47,6 @@ public class LookupTableExtractor extends Extractor {
                                 final ConditionType conditionType,
                                 final String conditionValue) throws ReservedFieldException, ConfigurationException {
         super(metricRegistry, id, title, order, Type.LOOKUP_TABLE, cursorStrategy, sourceField, targetField, extractorConfig, creatorUserId, converters, conditionType, conditionValue);
-
-        this.sourceField = sourceField;
-        this.targetField = targetField;
 
         final String lookupTableName = (String) extractorConfig.get(CONFIG_LUT_NAME);
         if (isNullOrEmpty(lookupTableName)) {

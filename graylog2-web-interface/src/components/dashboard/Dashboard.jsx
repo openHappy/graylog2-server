@@ -1,32 +1,42 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { DropdownButton, MenuItem } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
+import { Link } from 'react-router';
 
 import EditDashboardModalTrigger from './EditDashboardModalTrigger';
 import PermissionsMixin from 'util/PermissionsMixin';
 
+import CombinedProvider from 'injection/CombinedProvider';
 import StoreProvider from 'injection/StoreProvider';
+
 const CurrentUserStore = StoreProvider.getStore('CurrentUser');
-const DashboardsStore = StoreProvider.getStore('Dashboards');
+const { DashboardsActions, DashboardsStore } = CombinedProvider.get('Dashboards');
 const StartpageStore = StoreProvider.getStore('Startpage');
 
 import Routes from 'routing/Routes';
 
-const Dashboard = React.createClass({
+const Dashboard = createReactClass({
+  displayName: 'Dashboard',
+
   propTypes: {
-    dashboard: React.PropTypes.object,
-    permissions: React.PropTypes.arrayOf(React.PropTypes.string),
+    dashboard: PropTypes.object,
+    permissions: PropTypes.arrayOf(PropTypes.string),
   },
+
   mixins: [PermissionsMixin, Reflux.connect(CurrentUserStore)],
+
   _setStartpage() {
     StartpageStore.set(this.state.currentUser.username, 'dashboard', this.props.dashboard.id);
   },
+
   _onDashboardDelete() {
     if (window.confirm(`Do you really want to delete the dashboard ${this.props.dashboard.title}?`)) {
-      DashboardsStore.remove(this.props.dashboard);
+      DashboardsActions.delete(this.props.dashboard);
     }
   },
+
   _getDashboardActions() {
     let dashboardActions;
     const setAsStartpageMenuItem = (
@@ -58,6 +68,7 @@ const Dashboard = React.createClass({
 
     return dashboardActions;
   },
+
   render() {
     const createdFromContentPack = (this.props.dashboard.content_pack ?
       <i className="fa fa-cube" title="Created from content pack" /> : null);
@@ -65,16 +76,14 @@ const Dashboard = React.createClass({
     return (
       <li className="stream">
         <h2>
-          <LinkContainer to={Routes.dashboard_show(this.props.dashboard.id)}>
-            <a><span ref="dashboardTitle">{this.props.dashboard.title}</span></a>
-          </LinkContainer>
+          <Link to={Routes.dashboard_show(this.props.dashboard.id)}>{this.props.dashboard.title}</Link>
         </h2>
 
         <div className="stream-data">
           {this._getDashboardActions()}
           <div className="stream-description">
             {createdFromContentPack}
-            <span ref="dashboardDescription">{this.props.dashboard.description}</span>
+            {this.props.dashboard.description}
           </div>
         </div>
       </li>

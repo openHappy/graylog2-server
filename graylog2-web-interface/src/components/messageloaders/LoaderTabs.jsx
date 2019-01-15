@@ -1,4 +1,6 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { Tab, Tabs, Col } from 'react-bootstrap';
 import Immutable from 'immutable';
@@ -15,11 +17,13 @@ import MessageLoader from 'components/extractors/MessageLoader';
 import RawMessageLoader from './RawMessageLoader';
 import RecentMessageLoader from './RecentMessageLoader';
 
-const LoaderTabs = React.createClass({
+const LoaderTabs = createReactClass({
+  displayName: 'LoaderTabs',
+
   propTypes: {
-    tabs: React.PropTypes.oneOfType([
-      React.PropTypes.oneOf(['recent', 'messageId', 'raw']),
-      React.PropTypes.arrayOf(React.PropTypes.oneOf(['recent', 'messageId', 'raw'])),
+    tabs: PropTypes.oneOfType([
+      PropTypes.oneOf(['recent', 'messageId', 'raw']),
+      PropTypes.arrayOf(PropTypes.oneOf(['recent', 'messageId', 'raw'])),
     ]),
     messageId: PropTypes.string,
     index: PropTypes.string,
@@ -44,10 +48,11 @@ const LoaderTabs = React.createClass({
       inputs: undefined,
     };
   },
+
   componentDidMount() {
     this.loadData();
     if (this.props.messageId && this.props.index) {
-      this.refs.messageLoader.submit(this.props.messageId, this.props.index);
+      this.messageLoader.submit(this.props.messageId, this.props.index);
     }
   },
 
@@ -128,7 +133,7 @@ const LoaderTabs = React.createClass({
             Please provide the id and index of the message that you want to load in this form:
           </div>
 
-          <MessageLoader ref="messageLoader" onMessageLoaded={this.onMessageLoaded} hidden={false} hideText />
+          <MessageLoader ref={(messageLoader) => { this.messageLoader = messageLoader; }} onMessageLoaded={this.onMessageLoaded} hidden={false} hideText />
         </Tab>,
       );
     }

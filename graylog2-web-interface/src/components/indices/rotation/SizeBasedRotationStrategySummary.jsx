@@ -1,10 +1,11 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import NumberUtils from 'util/NumberUtils';
 
-const SizeBasedRotationStrategySummary = React.createClass({
-  propTypes: {
-    config: React.PropTypes.object.isRequired,
-  },
+class SizeBasedRotationStrategySummary extends React.Component {
+  static propTypes = {
+    config: PropTypes.object.isRequired,
+  };
 
   render() {
     return (
@@ -17,7 +18,7 @@ const SizeBasedRotationStrategySummary = React.createClass({
         </dl>
       </div>
     );
-  },
-});
+  }
+}
 
 export default SizeBasedRotationStrategySummary;

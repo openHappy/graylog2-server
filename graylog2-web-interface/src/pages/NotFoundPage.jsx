@@ -4,14 +4,14 @@ import { DocumentTitle } from 'components/common';
 
 import style from '!style/useable!css!./NotFoundPage.css';
 
-const NotFoundPage = React.createClass({
+class NotFoundPage extends React.Component {
   componentDidMount() {
     style.use();
-  },
+  }
 
   componentWillUnmount() {
     style.unuse();
-  },
+  }
 
   render() {
     return (
@@ -19,7 +19,7 @@ const NotFoundPage = React.createClass({
         <Row className="jumbotron-container">
           <Col mdOffset={2} md={8}>
             <Jumbotron>
-              <h1>404 - Page not found</h1>
+              <h1>Page not found</h1>
               <p>The party gorilla was just here, but had another party to rock.</p>
               <p>Oh, party gorilla! How we miss you! Will we ever see you again?</p>
             </Jumbotron>
@@ -27,7 +27,7 @@ const NotFoundPage = React.createClass({
         </Row>
       </DocumentTitle>
     );
-  },
-});
+  }
+}
 
 export default NotFoundPage;

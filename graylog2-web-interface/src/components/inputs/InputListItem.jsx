@@ -1,4 +1,6 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { Button, DropdownButton, MenuItem, Col } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
@@ -17,13 +19,17 @@ const InputsActions = ActionsProvider.getActions('Inputs');
 
 import { InputForm, InputStateBadge, InputStateControl, InputStaticFields, InputThroughput, StaticFieldForm } from 'components/inputs';
 
-const InputListItem = React.createClass({
+const InputListItem = createReactClass({
+  displayName: 'InputListItem',
+
   propTypes: {
     input: PropTypes.object.isRequired,
     currentNode: PropTypes.object.isRequired,
     permissions: PropTypes.array.isRequired,
   },
+
   mixins: [PermissionsMixin, Reflux.connect(InputTypesStore)],
+
   _deleteInput() {
     if (window.confirm(`Do you really want to delete input '${this.props.input.title}'?`)) {
       InputsActions.delete(this.props.input);
@@ -31,14 +37,17 @@ const InputListItem = React.createClass({
   },
 
   _openStaticFieldForm() {
-    this.refs.staticFieldForm.open();
+    this.staticFieldForm.open();
   },
+
   _editInput() {
-    this.refs.configurationForm.open();
+    this.configurationForm.open();
   },
+
   _updateInput(data) {
     InputsActions.update(this.props.input.id, data);
   },
+
   render() {
     if (!this.state.inputTypes) {
       return <Spinner />;
@@ -132,7 +141,7 @@ const InputListItem = React.createClass({
     }
 
     const inputForm = definition ?
-      (<InputForm ref="configurationForm" key={`edit-form-input-${input.id}`}
+      (<InputForm ref={(configurationForm) => { this.configurationForm = configurationForm; }} key={`edit-form-input-${input.id}`}
                    globalValue={input.global} nodeValue={input.node}
                    configFields={definition.requested_configuration}
                    title={`Editing Input ${input.title}`}
@@ -147,7 +156,7 @@ const InputListItem = React.createClass({
                              id={input.id}
                              configuration={input.attributes}
                              typeDefinition={definition || {}} />
-          <StaticFieldForm ref="staticFieldForm" input={this.props.input} />
+          <StaticFieldForm ref={(staticFieldForm) => { this.staticFieldForm = staticFieldForm; }} input={this.props.input} />
           <InputStaticFields input={this.props.input} />
         </Col>
         <Col md={4}>

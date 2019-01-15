@@ -83,12 +83,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import static com.google.common.base.MoreObjects.firstNonNull;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.maxBy;
 import static org.graylog2.shared.security.RestPermissions.USERS_EDIT;
 import static org.graylog2.shared.security.RestPermissions.USERS_PERMISSIONSEDIT;
 import static org.graylog2.shared.security.RestPermissions.USERS_ROLESEDIT;
+import static org.graylog2.shared.security.RestPermissions.USERS_TOKENCREATE;
+import static org.graylog2.shared.security.RestPermissions.USERS_TOKENREMOVE;
+import static org.graylog2.shared.security.RestPermissions.USERS_TOKENLIST;
 
 @RequiresAuthentication
 @Path("/users")
@@ -123,15 +125,22 @@ public class UsersResource extends RestResource {
     })
     public UserSummary get(@ApiParam(name = "username", value = "The username to return information for.", required = true)
                            @PathParam("username") String username) {
+        // If a user has permissions to edit another user's profile, it should be able to see it.
+        // Reader users always have permissions to edit their own profile.
+        if (!isPermitted(USERS_EDIT, username)) {
+            throw new ForbiddenException("Not allowed to view user " + username);
+        }
+
         final User user = userService.load(username);
         if (user == null) {
             throw new NotFoundException("Couldn't find user " + username);
         }
-        // if the requested username does not match the authenticated user, then we don't return permission information
-        final boolean allowedToSeePermissions = isPermitted(USERS_PERMISSIONSEDIT, username);
-        final boolean permissionsAllowed = getSubject().getPrincipal().toString().equals(username) || allowedToSeePermissions;
 
-        return toUserResponse(user, permissionsAllowed, Optional.empty());
+        final String requestingUser = getSubject().getPrincipal().toString();
+        final boolean isSelf = requestingUser.equals(username);
+        final boolean canEditUserPermissions = isPermitted(USERS_PERMISSIONSEDIT, username);
+
+        return toUserResponse(user, isSelf || canEditUserPermissions, Optional.empty());
     }
 
     @GET
@@ -233,10 +242,7 @@ public class UsersResource extends RestResource {
                            @Valid @NotNull ChangeUserRequest cr) throws ValidationException {
         checkPermission(USERS_EDIT, username);
 
-        final User user = userService.load(username);
-        if (user == null) {
-            throw new NotFoundException("Couldn't find user " + username);
-        }
+        final User user = loadUser(username);
 
         if (user.isReadOnly()) {
             throw new BadRequestException("Cannot modify readonly user " + username);
@@ -423,11 +429,14 @@ public class UsersResource extends RestResource {
 
     @GET
     @Path("{username}/tokens")
-    @RequiresPermissions(RestPermissions.USERS_TOKENLIST)
     @ApiOperation("Retrieves the list of access tokens for a user")
     public TokenList listTokens(@ApiParam(name = "username", required = true)
                                 @PathParam("username") String username) {
-        final User user = _tokensCheckAndLoadUser(username);
+        if (!isPermitted(USERS_TOKENLIST, username)) {
+            throw new ForbiddenException("Not allowed to list tokens for user " + username);
+        }
+
+        final User user = loadUser(username);
 
         final ImmutableList.Builder<Token> tokenList = ImmutableList.builder();
         for (AccessToken token : accessTokenService.loadAll(user.getName())) {
@@ -439,28 +448,35 @@ public class UsersResource extends RestResource {
 
     @POST
     @Path("{username}/tokens/{name}")
-    @RequiresPermissions(RestPermissions.USERS_TOKENCREATE)
     @ApiOperation("Generates a new access token for a user")
     @AuditEvent(type = AuditEventTypes.USER_ACCESS_TOKEN_CREATE)
     public Token generateNewToken(
             @ApiParam(name = "username", required = true) @PathParam("username") String username,
             @ApiParam(name = "name", value = "Descriptive name for this token (e.g. 'cronjob') ", required = true) @PathParam("name") String name,
             @ApiParam(name = "JSON Body", value = "Placeholder because POST requests should have a body. Set to '{}', the content will be ignored.", defaultValue = "{}") String body) {
-        final User user = _tokensCheckAndLoadUser(username);
+        if (!isPermitted(USERS_TOKENCREATE, username)) {
+            throw new ForbiddenException("Not allowed to create tokens for user " + username);
+        }
+
+        final User user = loadUser(username);
+
+
         final AccessToken accessToken = accessTokenService.create(user.getName(), name);
 
         return Token.create(accessToken.getName(), accessToken.getToken(), accessToken.getLastAccess());
     }
 
     @DELETE
-    @RequiresPermissions(RestPermissions.USERS_TOKENREMOVE)
     @Path("{username}/tokens/{token}")
     @ApiOperation("Removes a token for a user")
     @AuditEvent(type = AuditEventTypes.USER_ACCESS_TOKEN_DELETE)
     public void revokeToken(
             @ApiParam(name = "username", required = true) @PathParam("username") String username,
             @ApiParam(name = "token", required = true) @PathParam("token") String token) {
-        _tokensCheckAndLoadUser(username);
+        if (!isPermitted(USERS_TOKENREMOVE, username)) {
+            throw new ForbiddenException("Not allowed to remove tokens for user " + username);
+        }
+
         final AccessToken accessToken = accessTokenService.load(token);
 
         if (accessToken != null) {
@@ -470,13 +486,10 @@ public class UsersResource extends RestResource {
         }
     }
 
-    private User _tokensCheckAndLoadUser(String username) {
+    private User loadUser(String username) {
         final User user = userService.load(username);
         if (user == null) {
             throw new NotFoundException("Unknown user " + username);
-        }
-        if (!getSubject().getPrincipal().equals(username)) {
-            throw new ForbiddenException("Cannot access other people's tokens.");
         }
         return user;
     }
@@ -517,7 +530,7 @@ public class UsersResource extends RestResource {
                 user.getFullName(),
                 includePermissions ? userService.getPermissionsForUser(user) : Collections.emptyList(),
                 user.getPreferences(),
-                firstNonNull(user.getTimeZone(), DateTimeZone.UTC).getID(),
+                user.getTimeZone() == null ? null : user.getTimeZone().getID(),
                 user.getSessionTimeoutMs(),
                 user.isReadOnly(),
                 user.isExternalUser(),

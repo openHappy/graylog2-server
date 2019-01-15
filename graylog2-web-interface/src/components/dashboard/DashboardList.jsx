@@ -1,23 +1,29 @@
+import PropTypes from 'prop-types';
 import React from 'react';
-import Immutable from 'immutable';
+import createReactClass from 'create-react-class';
+import ImmutablePropTypes from 'react-immutable-proptypes';
 import { Alert } from 'react-bootstrap';
 
 import Dashboard from './Dashboard';
 import EditDashboardModalTrigger from './EditDashboardModalTrigger';
 import PermissionsMixin from '../../util/PermissionsMixin';
 
-const DashboardList = React.createClass({
+const DashboardList = createReactClass({
+  displayName: 'DashboardList',
+
   propTypes: {
-    dashboards: React.PropTypes.instanceOf(Immutable.List),
-    onDashboardAdd: React.PropTypes.func,
-    permissions: React.PropTypes.arrayOf(React.PropTypes.string),
+    dashboards: ImmutablePropTypes.list,
+    permissions: PropTypes.arrayOf(PropTypes.string),
   },
+
   mixins: [PermissionsMixin],
+
   _formatDashboard(dashboard) {
     return (
       <Dashboard key={`dashboard-${dashboard.id}`} dashboard={dashboard} permissions={this.props.permissions} />
     );
   },
+
   render() {
     if (this.props.dashboards.isEmpty()) {
       let createDashboardButton;
@@ -25,8 +31,7 @@ const DashboardList = React.createClass({
       if (this.isPermitted(this.props.permissions, ['dashboards:create'])) {
         createDashboardButton = (
           <span>
-            <EditDashboardModalTrigger action="create" buttonClass="btn-link btn-text"
-                                       onSaved={this.props.onDashboardAdd}>
+            <EditDashboardModalTrigger action="create" buttonClass="btn-link btn-text">
               Create one now
             </EditDashboardModalTrigger>
             .

@@ -1,87 +1,304 @@
 **************************
-Upgrading to Graylog 2.3.x
+Upgrading to Graylog 3.0.x
 **************************
 
-.. _upgrade-from-22-to-23:
+.. _upgrade-from-24-to-30:
 
 This file only contains the upgrade note for the upcoming release.
 Please see `our documentation <http://docs.graylog.org/en/latest/pages/upgrade.html>`_
 for the complete upgrade notes.
 
-Graylog switches to Elasticsearch HTTP client
-=============================================
+Elasticsearch Version Requirements
+==================================
 
-In all prior versions, Graylog used the Elasticsearch node client to connect to an Elasticsearch cluster, which was acting as a client-only Elasticsearch node. For compatibility reasons of the used binary transfer protocol, the range of Elasticsearch versions Graylog could connect to was limited. For more information and differences between the different ways to connect to Elasticsearch, you can check the `Elasticsearch documentation <https://www.elastic.co/guide/en/elasticsearch/guide/current/_talking_to_elasticsearch.html>`_.
+Graylog 3.0 drops support for Elasticsearch versions before 5.6.x. That means you have to upgrade Elasticsearch to at least version 5.6.5 before upgrading Graylog to version 3.0. Make sure to read the Elasticsearch upgrade guides before doing that.
 
-Starting with version 2.3.0, we are switching over to using a lightweight HTTP client, which is almost version-agnostic. The biggest change is that it does not connect to the Elasticsearch native protocol port (defaulting to 9300/tcp), but the Elasticsearch HTTP port (defaulting to 9200/tcp).
+Simplified HTTP interface configuration
+=======================================
 
-Due to the differences in connecting to the Elasticsearch cluster, configuring Graylog has changed. These configuration settings have been removed::
+Graylog used to have a lot of different settings regarding the various HTTP interfaces it provides, namely the Graylog REST API and the Graylog web interface.
 
-  elasticsearch_cluster_discovery_timeout
-  elasticsearch_cluster_name
-  elasticsearch_config_file
-  elasticsearch_discovery_initial_state_timeout
-  elasticsearch_discovery_zen_ping_unicast_hosts
-  elasticsearch_http_enabled
-  elasticsearch_network_bind_host
-  elasticsearch_network_host
-  elasticsearch_network_publish_host
-  elasticsearch_node_data
-  elasticsearch_node_master
-  elasticsearch_node_name_prefix
-  elasticsearch_path_data
-  elasticsearch_path_home
-  elasticsearch_transport_tcp_port
+This mostly originates from the fact that Graylog used to consist of two components before Graylog 2.0.0, a server component and a separate web interface.
 
-The following configuration options are now being used to configure connectivity to Elasticsearch:
+The changes in this release finally merge the HTTP listeners for the Graylog REST API and web interface into a single HTTP listener, which should make the initial configuration of Graylog simpler and reduce errors caused by conflicting settings.
 
-+----------------------------------------------------+-----------+--------------------------------------------------------------+-----------------------------+
-| Config Setting                                     | Type      | Comments                                                     | Default                     |
-+====================================================+===========+==============================================================+=============================+
-| ``elasticsearch_connect_timeout``                  | Duration  | Timeout when connection to individual Elasticsearch hosts    | ``10s`` (10 Seconds)        |
-+----------------------------------------------------+-----------+--------------------------------------------------------------+-----------------------------+
-| ``elasticsearch_hosts``                            | List<URI> | Comma-separated list of URIs of Elasticsearch hosts          | ``http://127.0.0.1:9200``   |
-+----------------------------------------------------+-----------+--------------------------------------------------------------+-----------------------------+
-| ``elasticsearch_idle_timeout``                     | Duration  | Timeout after which idle connections are terminated          | ``-1s`` (Never)             |
-+----------------------------------------------------+-----------+--------------------------------------------------------------+-----------------------------+
-| ``elasticsearch_max_total_connections``            | int       | Maximum number of total Elasticsearch connections            | ``20``                      |
-+----------------------------------------------------+-----------+--------------------------------------------------------------+-----------------------------+
-| ``elasticsearch_max_total_connections_per_route``  | int       | Maximum number of Elasticsearch connections per route/host   | ``2``                       |
-+----------------------------------------------------+-----------+--------------------------------------------------------------+-----------------------------+
-| ``elasticsearch_socket_timeout``                   | Duration  | Timeout when sending/receiving from Elasticsearch connection | ``60s`` (60 Seconds)        |
-+----------------------------------------------------+-----------+--------------------------------------------------------------+-----------------------------+
-| ``elasticsearch_discovery_enabled``                | boolean   | Enable automatic Elasticsearch node discovery                | ``false``                   |
-+----------------------------------------------------+-----------+--------------------------------------------------------------+-----------------------------+
-| ``elasticsearch_discovery_filter``                 | String    | Filter by node attributes for the discovered nodes           | empty (use all nodes)       |
-+----------------------------------------------------+-----------+--------------------------------------------------------------+-----------------------------+
-| ``elasticsearch_discovery_frequency``              | Duration  | Frequency of the Elasticsearch node discovery                | ``30s`` (30 Seconds)        |
-+----------------------------------------------------+-----------+--------------------------------------------------------------+-----------------------------+
+The path of the Graylog REST API is now hard-coded to ``/api``, so if you're still using the legacy URI on port 12900/tcp or have been using a custom path (via the ``rest_listen_uri`` or ``rest_transport_uri`` settings), you'll have to update the URI used to access the Graylog REST API.
 
-In most cases, the only configuration setting that needs to be set explicitly is ``elasticsearch_hosts``. All other configuration settings should be tweaked only in case of errors.
+If you are using a reverse proxy in front of Graylog (like nginx) and configured it to set the ``X-Graylog-Server-URL`` HTTP header, you have to remove the ``api/`` suffix because that is now the default. (as mentioned above)
 
-.. warn:: The automatic node discovery does not work if Elasticsearch requires authentication, e. g. when using Shield (X-Pack).
+Example::
 
-.. caution:: Graylog does not react to externally triggered index changes (creating/closing/reopening/deleting an index) anymore. All of these actions need to be performed through the Graylog REST API in order to retain index consistency.
+    # This nginx setting in Graylog <3.0 ...
+    header_upstream X-Graylog-Server-URL http://{host}/api
+
+    # ... needs to be changed to the following with Graylog 3.0
+    header_upstream X-Graylog-Server-URL http://{host}/
+
+For a more detailed description of the new HTTP settings, please consult the annotated `Graylog configuration file <https://github.com/Graylog2/graylog2-server/blob/d9bb656275eeac7027e3fe12d9ee1b6a0905dcd1/misc/graylog.conf#L79-L81>`__.
 
 
-Special note for upgrading from an existing Graylog setup with a new Elasticsearch cluster
-------------------------------------------------------------------------------------------
+Overview of removed Graylog REST API settings:
 
-If you are upgrading the Elasticsearch cluster of an existing Graylog setup without migrating the indices, your Graylog setup contains stale index ranges causing nonexisting index errors upon search/alerting. To remediate this, you need to manually trigger an index range recalculation for all index sets once. This is possible using the web interface using the System->Indices functionality or by using the REST API using the ``/system/indices/ranges/<index set id>/rebuild`` endpoint.
++----------------------------------+----------------------------------+--------------------------------+
+| Removed Setting                  | New Setting                      | Default                        |
++==================================+==================================+================================+
+| ``rest_listen_uri``              | ``http_bind_address``            | ``127.0.0.1:9000``             |
++----------------------------------+----------------------------------+--------------------------------+
+| ``rest_transport_uri``           | ``http_publish_uri``             | ``http://$http_bind_address/`` |
++----------------------------------+----------------------------------+--------------------------------+
+| ``web_endpoint_uri``             | ``http_external_uri``            | ``$http_publish_uri``          |
++----------------------------------+----------------------------------+--------------------------------+
+| ``rest_enable_cors``             | ``http_enable_cors``             | ``true``                       |
++----------------------------------+----------------------------------+--------------------------------+
+| ``rest_enable_gzip``             | ``http_enable_gzip``             | ``true``                       |
++----------------------------------+----------------------------------+--------------------------------+
+| ``rest_max_header_size``         | ``http_max_header_size``         | ``8192``                       |
++----------------------------------+----------------------------------+--------------------------------+
+| ``rest_max_initial_line_length`` | ``http_max_initial_line_length`` | ``4096``                       |
++----------------------------------+----------------------------------+--------------------------------+
+| ``rest_thread_pool_size``        | ``http_thread_pool_size``        | ``16``                         |
++----------------------------------+----------------------------------+--------------------------------+
+| ``rest_enable_tls``              | ``http_enable_tls``              | ``false``                      |
++----------------------------------+----------------------------------+--------------------------------+
+| ``rest_tls_cert_file``           | ``http_tls_cert_file``           | Empty                          |
++----------------------------------+----------------------------------+--------------------------------+
+| ``rest_tls_key_file``            | ``http_tls_key_file``            | Empty                          |
++----------------------------------+----------------------------------+--------------------------------+
+| ``rest_tls_key_password``        | ``http_tls_key_password``        | Empty                          |
++----------------------------------+----------------------------------+--------------------------------+
 
-Graylog REST API
-================
 
-Rotation and Retention strategies
----------------------------------
+Overview of removed Graylog web interface settings:
 
-The deprecated HTTP resources at ``/system/indices/rotation/config`` and ``/system/indices/retention/config``, which didn't work since Graylog 2.2.0, have been removed.
++---------------------------------+----------------------------------+--------------------+
+| Removed Setting                 | New Setting                      | Default            |
++=================================+==================================+====================+
+| ``web_enable``                  | None                             |                    |
++---------------------------------+----------------------------------+--------------------+
+| ``web_listen_uri``              | ``http_bind_address``            | ``127.0.0.1:9000`` |
++---------------------------------+----------------------------------+--------------------+
+| ``web_enable_cors``             | ``http_enable_cors``             | ``true``           |
++---------------------------------+----------------------------------+--------------------+
+| ``web_enable_gzip``             | ``http_enable_gzip``             | ``true``           |
++---------------------------------+----------------------------------+--------------------+
+| ``web_max_header_size``         | ``http_max_header_size``         | ``8192``           |
++---------------------------------+----------------------------------+--------------------+
+| ``web_max_initial_line_length`` | ``http_max_initial_line_length`` | ``4096``           |
++---------------------------------+----------------------------------+--------------------+
+| ``web_thread_pool_size``        | ``http_thread_pool_size``        | ``16``             |
++---------------------------------+----------------------------------+--------------------+
+| ``web_enable_tls``              | ``http_enable_tls``              | ``false``          |
++---------------------------------+----------------------------------+--------------------+
+| ``web_tls_cert_file``           | ``http_tls_cert_file``           | Empty              |
++---------------------------------+----------------------------------+--------------------+
+| ``web_tls_key_file``            | ``http_tls_key_file``            | Empty              |
++---------------------------------+----------------------------------+--------------------+
+| ``web_tls_key_password``        | ``http_tls_key_password``        | Empty              |
++---------------------------------+----------------------------------+--------------------+
 
-These settings are part of the index set configuration and can be configured under ``/system/indices/index_sets``.
+Plugins merged into the Graylog server
+======================================
 
-Stream List Response structure does not include `in_grace` field anymore
-------------------------------------------------------------------------
+Starting with Graylog 3.0.0, the following official plugins were merged into the Graylog server:
 
-The response to ``GET /streams``, ``GET /streams/<id>`` & ``PUT /streams/<id>`` does not contain the ``in_grace`` field for configured alert conditions anymore.
+- `Beats Input <https://github.com/Graylog2/graylog-plugin-beats>`_
+- `CEF Input <https://github.com/Graylog2/graylog-plugin-cef>`_
+- `Collector Plugin <https://github.com/Graylog2/graylog-plugin-collector>`_
+- `Enterprise Integration Page <https://github.com/Graylog2/graylog-plugin-enterprise-integration>`_
+- `Map Widget <https://github.com/Graylog2/graylog-plugin-map-widget>`_
+- `NetFlow Input <https://github.com/Graylog2/graylog-plugin-netflow>`_
+- `Pipeline Processor <https://github.com/Graylog2/graylog-plugin-pipeline-processor>`_
 
-The value of this flag can be retrieved using the ``GET /alerts/conditions`` endpoint, or per stream using the ``GET /streams/<streamId>/alerts/conditions`` endpoint.
+That means these plugins are not available as separate plugins anymore. If you manually update your Graylog installation (without using operating system packages), make sure to remove all old plugin files from the `plugin_dir <http://docs.graylog.org/en/3.0/pages/configuration/server.conf.html>`_ folder.
+
+The old issues in these repositories are still available for reference but new issues should only be created in the `Graylog server issue tracker <https://github.com/Graylog2/graylog2-server/issues>`_.
+
+The following HTTP API paths changed due to the plugin merge:
+
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+| Old Path                                                                                    | New Path                                      |
++=============================================================================================+===============================================+
+| ``/plugins/org.graylog.plugins.map/mapdata``                                                | ``/search/mapdata``                           |
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+| ``/plugins/org.graylog.plugins.pipelineprocessor/system/pipelines/pipeline``                | ``/system/pipelines/pipeline``                |
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+| ``/plugins/org.graylog.plugins.pipelineprocessor/system/pipelines/pipeline/parse``          | ``/system/pipelines/pipeline/parse``          |
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+| ``/plugins/org.graylog.plugins.pipelineprocessor/system/pipelines/rule``                    | ``/system/pipelines/rule``                    |
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+| ``/plugins/org.graylog.plugins.pipelineprocessor/system/pipelines/rule/functions``          | ``/system/pipelines/rule/functions``          |
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+| ``/plugins/org.graylog.plugins.pipelineprocessor/system/pipelines/rule/multiple``           | ``/system/pipelines/rule/multiple``           |
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+| ``/plugins/org.graylog.plugins.pipelineprocessor/system/pipelines/rule/parse``              | ``/system/pipelines/rule/parse``              |
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+| ``/plugins/org.graylog.plugins.pipelineprocessor/system/pipelines/connections``             | ``/system/pipelines/connections``             |
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+| ``/plugins/org.graylog.plugins.pipelineprocessor/system/pipelines/connections/to_stream``   | ``/system/pipelines/connections/to_stream``   |
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+| ``/plugins/org.graylog.plugins.pipelineprocessor/system/pipelines/connections/to_pipeline`` | ``/system/pipelines/connections/to_pipeline`` |
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+| ``/plugins/org.graylog.plugins.pipelineprocessor/system/pipelines/simulate``                | ``/system/pipelines/simulate``                |
++---------------------------------------------------------------------------------------------+-----------------------------------------------+
+
+New "bin_dir" and "data_dir" configuration parameters
+=====================================================
+
+We introduced two new configuration parameters related to file system paths.
+
+- ``bin_dir`` config option points to the directory that contains scripts like ``graylogctl``.
+- ``data_dir`` option configures the base directory for Graylog server state.
+
+Please check the updated default ``graylog.conf`` configuration file for required changes to your existing file.
+
+
+Removed support for Drools-based filters
+========================================
+
+For a long time, Graylog allowed to use `Drools <https://www.drools.org/>`_ to filter messages. Unfortunately, using Drools to perform complex filter logic came with a performance penalty and wasn't as flexible as we would have liked it to be.
+
+Starting with Graylog 3.0.0, the support for Drools-based message filters has been removed from Graylog. The ``rules_file`` configuration setting has been removed accordingly.
+
+We recommend migrating the Drools-based logic to `Processing Pipelines <http://docs.graylog.org/en/3.0/pages/pipelines.html>`_.
+
+
+Drools-based blacklist
+----------------------
+
+Graylog provided undocumented blacklist-functionality based on Drools. This blacklist could only be modified via the Graylog REST API on the ``/filters/blacklist`` resource.
+
+If you've been using this functionality, you'll have to migrate these blacklist rules to the `Processing Pipelines <http://docs.graylog.org/en/3.0/pages/pipelines.html>`_.
+
+To check if you're using the Drools-based blacklist in Graylog prior to version 3.0.0, you can run the following command::
+
+    # curl -u admin:password -H 'Accept: application/json' 'http://graylog.example.com/api/filters/blacklist?pretty=true'
+
+
+String-based blacklist rule
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Old blacklist rule::
+
+    {
+       "id" : "54e300001234123412340001",
+       "type" : "string",
+       "name" : "String Blacklist",
+       "description" : "Drop messages based on case-insensitive string comparison",
+       "fieldName" : "custom_field",
+       "pattern" : "EXAMPLE pattern",
+       "creator_user_id" : "admin",
+       "created_at" : "2018-04-04T12:00:00.000Z"
+    }
+
+New pipeline rule::
+
+    rule "string-blacklist"
+    when
+      has_field("custom_field") &&
+      lowercase(to_string($message.custom_field)) == "example pattern"
+    then
+      drop_message();
+    end
+
+See also:
+
+* `has_field() <http://docs.graylog.org/en/3.0/pages/pipelines/functions.html#has-field>`_
+* `lowercase() <http://docs.graylog.org/en/3.0/pages/pipelines/functions.html#lowercase>`_
+* `drop_message() <http://docs.graylog.org/en/3.0/pages/pipelines/functions.html#drop-message>`_
+
+Regex-based blacklist rule
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Old blacklist rule::
+
+    {
+       "id" : "54e300001234123412340002",
+       "type" : "regex",
+       "name" : "Regex Blacklist",
+       "description" : "Drop messages based on regular expression",
+       "fieldName" : "custom_field",
+       "pattern" : "^EXAMPLE.*",
+       "creator_user_id" : "admin",
+       "created_at" : "2018-04-04T12:00:00.000Z"
+    }
+
+New pipeline rule::
+
+    rule "regex-blacklist"
+    when
+      has_field("custom_field") &&
+      regex("^EXAMPLE.*", to_string($message.custom_field)).matches == true
+    then
+      drop_message();
+    end
+
+See also:
+
+* `has_field() <http://docs.graylog.org/en/3.0/pages/pipelines/functions.html#has-field>`_
+* `regex() <http://docs.graylog.org/en/3.0/pages/pipelines/functions.html#regex>`_
+* `drop_message() <http://docs.graylog.org/en/3.0/pages/pipelines/functions.html#drop-message>`_
+
+IP Range-based blacklist rule
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Old blacklist rule::
+
+    {
+       "id" : "54e300001234123412340003",
+       "type" : "iprange",
+       "name" : "IP Blacklist",
+       "description" : "Drop messages based on IP address",
+       "fieldName" : "custom_field",
+       "pattern" : "192.168.0.0/16",
+       "creator_user_id" : "admin",
+       "created_at" : "2018-04-04T12:00:00.000Z"
+    }
+
+New pipeline rule::
+
+    rule "ip-blacklist"
+    when
+      has_field("custom_field") &&
+      cidr_match("192.168.0.0/16", to_ip($message.custom_field))
+    then
+      drop_message();
+    end
+
+See also:
+
+* `has_field() <http://docs.graylog.org/en/3.0/pages/pipelines/functions.html#has-field>`_
+* `to_ip() <http://docs.graylog.org/en/3.0/pages/pipelines/functions.html#to-ip>`_
+* `cidr_match() <http://docs.graylog.org/en/3.0/pages/pipelines/functions.html#cidr-match>`_
+* `drop_message() <http://docs.graylog.org/en/3.0/pages/pipelines/functions.html#drop-message>`_
+
+
+Changed metrics name for stream rules
+=====================================
+
+The name of the metrics for stream rules have been changed to include the stream ID which helps identifying the actual stream they are related to.
+
+Old metric name::
+
+    org.graylog2.plugin.streams.StreamRule.${stream-rule-id}.executionTime
+
+New metric name::
+
+    org.graylog2.plugin.streams.Stream.${stream-id}.StreamRule.${stream-rule-id}.executionTime
+
+
+Email alarm callback default settings
+=====================================
+
+The defaults of the configuration settings for the email alarm callback with regard to encrypted connections have been changed.
+
++-----------------------------+-------------+-------------+
+| Setting                     | Old default | New default |
++=============================+=============+=============+
+| ``transport_email_use_tls`` | ``false``   | ``true``    |
++-----------------------------+-------------+-------------+
+| ``transport_email_use_ssl`` | ``true``    | ``false``   |
++-----------------------------+-------------+-------------+
+
+Furthermore, it's not possible anymore to enable both settings (SMTP with STARTTLS and SMTP over SSL) at the same time because this led to errors at runtime when Graylog tried to upgrade the connection to TLS with STARTTLS in an already existing SMTPS connection.
+
+Most SMTP services prefer SMTP with STARTTLS to provide an encrypted connection.

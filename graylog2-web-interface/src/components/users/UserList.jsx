@@ -1,6 +1,8 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import { LinkContainer } from 'react-router-bootstrap';
-import { Button, OverlayTrigger, Popover, Tooltip } from 'react-bootstrap';
+import { Button, OverlayTrigger, Popover, Tooltip, DropdownButton, MenuItem } from 'react-bootstrap';
 
 import PermissionsMixin from 'util/PermissionsMixin';
 import Routes from 'routing/Routes';
@@ -13,10 +15,12 @@ import { DataTable, Spinner, Timestamp } from 'components/common';
 
 import UserListStyle from '!style!css!./UserList.css';
 
-const UserList = React.createClass({
+const UserList = createReactClass({
+  displayName: 'UserList',
+
   propTypes: {
-    currentUsername: React.PropTypes.string.isRequired,
-    currentUser: React.PropTypes.object.isRequired,
+    currentUsername: PropTypes.string.isRequired,
+    currentUser: PropTypes.object.isRequired,
   },
 
   mixins: [PermissionsMixin],
@@ -27,6 +31,7 @@ const UserList = React.createClass({
       roles: undefined,
     };
   },
+
   componentDidMount() {
     this.loadUsers();
     RolesStore.loadRoles().done((roles) => {
@@ -42,9 +47,11 @@ const UserList = React.createClass({
       });
     });
   },
+
   _hasAdminRole(user) {
     return this.isPermitted(user.permissions, ['*']);
   },
+
   deleteUser(username) {
     const promise = UsersStore.deleteUser(username);
 
@@ -52,6 +59,7 @@ const UserList = React.createClass({
       this.loadUsers();
     });
   },
+
   _deleteUserFunction(username) {
     return () => {
       if (window.confirm(`Do you really want to delete user ${username}?`)) {
@@ -59,6 +67,7 @@ const UserList = React.createClass({
       }
     };
   },
+
   _headerCellFormatter(header) {
     let formattedHeaderCell;
 
@@ -90,6 +99,7 @@ const UserList = React.createClass({
 
     return formattedHeaderCell;
   },
+
   _userInfoFormatter(user) {
     const rowClass = user.username === this.props.currentUsername ? 'active' : null;
     let userBadge = null;
@@ -109,20 +119,47 @@ const UserList = React.createClass({
 
     let actions = null;
     if (user.read_only) {
+      const editTokensAction = (
+        <LinkContainer to={Routes.SYSTEM.AUTHENTICATION.USERS.TOKENS.edit(encodeURIComponent(user.username))}>
+          <Button id={`edit-tokens-${user.username}`} bsStyle="info" bsSize="xs" title={`Edit tokens of user ${user.username}`}>
+            Edit tokens
+          </Button>
+        </LinkContainer>
+      );
+
       const tooltip = <Tooltip id="system-user">System users can only be modified in the Graylog configuration file.</Tooltip>;
       actions = (
-        <OverlayTrigger placement="left" overlay={tooltip}>
-          <span className={UserListStyle.help}>
-            <Button bsSize="xs" bsStyle="info" disabled>System user</Button>
-          </span>
-        </OverlayTrigger>
+        <span>
+          <OverlayTrigger placement="left" overlay={tooltip}>
+            <span className={UserListStyle.help}>
+              <Button bsSize="xs" bsStyle="info" disabled>System user</Button>
+            </span>
+          </OverlayTrigger>
+          &nbsp;
+          {editTokensAction}
+        </span>
       );
     } else {
+      const editTokensAction = (
+        <LinkContainer to={Routes.SYSTEM.AUTHENTICATION.USERS.TOKENS.edit(encodeURIComponent(user.username))}>
+          <MenuItem eventKey="1" id={`edit-tokens-${user.username}`} bsStyle="info" bsSize="xs" title={`Edit tokens of user ${user.username}`}>
+            Edit tokens
+          </MenuItem>
+        </LinkContainer>
+      );
+
       const deleteAction = (
-        <Button id={`delete-user-${user.username}`} bsStyle="primary" bsSize="xs" title="Delete user"
+        <MenuItem eventKey="2" id={`delete-user-${user.username}`} bsStyle="primary" bsSize="xs" title="Delete user"
                 onClick={this._deleteUserFunction(user.username)}>
           Delete
-        </Button>
+        </MenuItem>
+      );
+
+      const actionDropDown = (
+        <DropdownButton bsSize="xs" title="More actions" pullRight>
+          {editTokensAction}
+          {deleteAction}
+        </DropdownButton>
       );
 
       const editAction = (
@@ -135,9 +172,9 @@ const UserList = React.createClass({
 
       actions = (
         <div>
-          {this.isPermitted(this.props.currentUser.permissions, ['users:edit']) ? deleteAction : null}
-          &nbsp;
           {this.isPermitted(this.props.currentUser.permissions, [`users:edit:${user.username}`]) ? editAction : null}
+          &nbsp;
+          {actionDropDown}
         </div>
       );
     }
@@ -150,10 +187,11 @@ const UserList = React.createClass({
         <td className="limited">{user.email}</td>
         <td className="limited">{user.client_address}</td>
         <td className={UserListStyle.limitedWide}>{roleBadges}</td>
-        <td>{actions}</td>
+        <td className={UserListStyle.actions}>{actions}</td>
       </tr>
     );
   },
+
   render() {
     const filterKeys = ['username', 'full_name', 'email', 'client_address'];
     const headers = ['', 'Name', 'Username', 'Email Address', 'Client Address', 'Role', 'Actions'];

@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Row, Col, Modal, Button } from 'react-bootstrap';
 
 import BootstrapModalWrapper from 'components/bootstrap/BootstrapModalWrapper';
@@ -7,30 +8,35 @@ import SortableList from 'components/common/SortableList';
 import ActionsProvider from 'injection/ActionsProvider';
 const ExtractorsActions = ActionsProvider.getActions('Extractors');
 
-const ExtractorSortModal = React.createClass({
-  propTypes: {
+class ExtractorSortModal extends React.Component {
+  static propTypes = {
     input: PropTypes.object.isRequired,
     extractors: PropTypes.array.isRequired,
-  },
-  open() {
-    this.refs.modal.open();
-  },
-  close() {
-    this.refs.modal.close();
-  },
-  _updateSorting(newSorting) {
+  };
+
+  open = () => {
+    this.modal.open();
+  };
+
+  close = () => {
+    this.modal.close();
+  };
+
+  _updateSorting = (newSorting) => {
     this.sortedExtractors = newSorting;
-  },
-  _saveSorting() {
+  };
+
+  _saveSorting = () => {
     if (!this.sortedExtractors) {
       this.close();
     }
     const promise = ExtractorsActions.order.triggerPromise(this.props.input.id, this.sortedExtractors);
     promise.then(() => this.close());
-  },
+  };
+
   render() {
     return (
-      <BootstrapModalWrapper ref="modal">
+      <BootstrapModalWrapper ref={(modal) => { this.modal = modal; }}>
         <Modal.Header closeButton>
           <Modal.Title>
             <span>Sort extractors for <em>{this.props.input.title}</em></span>
@@ -50,7 +56,7 @@ const ExtractorSortModal = React.createClass({
         </Modal.Footer>
       </BootstrapModalWrapper>
     );
-  },
-});
+  }
+}
 
 export default ExtractorSortModal;

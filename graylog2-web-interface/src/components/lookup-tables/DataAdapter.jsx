@@ -1,7 +1,10 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Button, Row, Col } from 'react-bootstrap';
+import { LinkContainer } from 'react-router-bootstrap';
 import { Input } from 'components/bootstrap';
 import FormsUtils from 'util/FormsUtils';
+import Routes from 'routing/Routes';
 import { ContentPackMarker } from 'components/common';
 import { PluginStore } from 'graylog-web-plugin/plugin';
 import CombinedProvider from 'injection/CombinedProvider';
@@ -9,29 +12,26 @@ import Styles from './ConfigSummary.css';
 
 const { LookupTableDataAdaptersActions } = CombinedProvider.get('LookupTableDataAdapters');
 
-const DataAdapter = React.createClass({
+class DataAdapter extends React.Component {
+  static propTypes = {
+    dataAdapter: PropTypes.object.isRequired,
+  };
 
-  propTypes: {
-    dataAdapter: React.PropTypes.object.isRequired,
-  },
+  state = {
+    lookupKey: null,
+    lookupResult: null,
+  };
 
-  getInitialState() {
-    return {
-      lookupKey: null,
-      lookupResult: null,
-    };
-  },
-
-  _onChange(event) {
+  _onChange = (event) => {
     this.setState({ lookupKey: FormsUtils.getValueFromInput(event.target) });
-  },
+  };
 
-  _lookupKey(e) {
+  _lookupKey = (e) => {
     e.preventDefault();
     LookupTableDataAdaptersActions.lookup(this.props.dataAdapter.name, this.state.lookupKey).then((result) => {
       this.setState({ lookupResult: result });
     });
-  },
+  };
 
   render() {
     const plugins = {};
@@ -65,6 +65,9 @@ const DataAdapter = React.createClass({
           <div className={Styles.config}>
             {React.createElement(summary, { dataAdapter: dataAdapter })}
           </div>
+          <LinkContainer to={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.edit(dataAdapter.name)}>
+            <Button bsStyle="success">Edit</Button>
+          </LinkContainer>
         </Col>
         <Col md={6}>
           <h3>Test lookup</h3>
@@ -79,11 +82,7 @@ const DataAdapter = React.createClass({
                      onChange={this._onChange}
                      help="Key to look up a value for."
                      value={this.state.lookupKey} />
-            </fieldset>
-            <fieldset>
-              <Input>
-                <Button type="submit" bsStyle="success">Look up</Button>
-              </Input>
+              <Button type="submit" bsStyle="success">Look up</Button>
             </fieldset>
           </form>
           { this.state.lookupResult && (
@@ -95,8 +94,7 @@ const DataAdapter = React.createClass({
         </Col>
       </Row>
     );
-  },
-
-});
+  }
+}
 
 export default DataAdapter;

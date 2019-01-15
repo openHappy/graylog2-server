@@ -1,23 +1,21 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 
 import { OverlayTrigger, Popover } from 'react-bootstrap';
 
 import Styles from './ErrorPopover.css';
 
-const ErrorPopover = React.createClass({
-
-  propTypes: {
+class ErrorPopover extends React.Component {
+  static propTypes = {
     errorText: PropTypes.string.isRequired,
     title: PropTypes.string,
     placement: PropTypes.string,
-  },
+  };
 
-  getDefaultProps() {
-    return {
-      title: 'Error',
-      placement: 'bottom',
-    };
-  },
+  static defaultProps = {
+    title: 'Error',
+    placement: 'bottom',
+  };
 
   render() {
     const overlay = (<Popover id="error-popover" title={this.props.title} className={Styles.overlay}>
@@ -31,7 +29,7 @@ const ErrorPopover = React.createClass({
         </span>
       </OverlayTrigger>
     );
-  },
-});
+  }
+}
 
 export default ErrorPopover;

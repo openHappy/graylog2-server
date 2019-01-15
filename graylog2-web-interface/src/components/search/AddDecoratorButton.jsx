@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import jQuery from 'jquery';
 import PureRenderMixin from 'react-addons-pure-render-mixin';
@@ -15,18 +17,23 @@ const DecoratorsActions = ActionsProvider.getActions('Decorators');
 
 import DecoratorStyles from '!style!css!components/search/decoratorStyles.css';
 
-const AddDecoratorButton = React.createClass({
+const AddDecoratorButton = createReactClass({
+  displayName: 'AddDecoratorButton',
+
   propTypes: {
-    nextOrder: React.PropTypes.number.isRequired,
-    stream: React.PropTypes.string,
-    disabled: React.PropTypes.bool,
+    nextOrder: PropTypes.number.isRequired,
+    stream: PropTypes.string,
+    disabled: PropTypes.bool,
   },
+
   mixins: [Reflux.connect(DecoratorsStore), PureRenderMixin],
+
   getDefaultProps() {
     return {
       disabled: false,
     };
   },
+
   getInitialState() {
     return {
       typeDefinition: {},
@@ -36,10 +43,12 @@ const AddDecoratorButton = React.createClass({
   _formatDecoratorType(typeDefinition, typeName) {
     return { value: typeName, label: typeDefinition.name };
   },
+
   _handleCancel() {
-    this.refs.select.clearValue();
+    this.select.clearValue();
     this.setState(this.getInitialState());
   },
+
   _handleSubmit(data) {
     const request = {
       stream: this.props.stream,
@@ -50,9 +59,11 @@ const AddDecoratorButton = React.createClass({
     DecoratorsActions.create(request);
     this.setState({ typeName: this.PLACEHOLDER });
   },
+
   _openModal() {
-    this.refs.configurationForm.open();
+    this.configurationForm.open();
   },
+
   _onTypeChange(decoratorType) {
     this.setState({ typeName: decoratorType });
     if (this.state.types[decoratorType]) {
@@ -61,13 +72,14 @@ const AddDecoratorButton = React.createClass({
       this.setState({ typeDefinition: {} });
     }
   },
+
   render() {
     if (!this.state.types) {
       return <Spinner />;
     }
     const decoratorTypes = jQuery.map(this.state.types, this._formatDecoratorType);
     const configurationForm = (this.state.typeName !== this.PLACEHOLDER ?
-      (<ConfigurationForm ref="configurationForm"
+      (<ConfigurationForm ref={(elem) => { this.configurationForm = elem; }}
                          key="configuration-form-output" configFields={this.state.typeDefinition.requested_configuration}
                          title={`Create new ${this.state.typeDefinition.name}`}
                          typeName={this.state.typeName} includeTitleField={false}
@@ -75,9 +87,9 @@ const AddDecoratorButton = React.createClass({
     return (
       <div className={`${DecoratorStyles.decoratorBox} ${DecoratorStyles.addDecoratorButtonContainer}`}>
         <div className={DecoratorStyles.addDecoratorSelect}>
-          <Select ref="select"
+          <Select ref={(select) => { this.select = select; }}
                   placeholder="Select decorator"
-                  onValueChange={this._onTypeChange}
+                  onChange={this._onTypeChange}
                   options={decoratorTypes}
                   matchProp="label"
                   disabled={this.props.disabled}

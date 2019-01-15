@@ -24,6 +24,11 @@ import com.google.inject.Injector;
 import com.google.inject.Module;
 import com.google.inject.spi.Message;
 import com.mongodb.MongoException;
+import org.graylog.plugins.cef.CEFInputModule;
+import org.graylog.plugins.map.MapWidgetModule;
+import org.graylog.plugins.netflow.NetFlowPluginModule;
+import org.graylog.plugins.pipelineprocessor.PipelineConfig;
+import org.graylog.plugins.sidecar.SidecarModule;
 import org.graylog2.Configuration;
 import org.graylog2.alerts.AlertConditionBindings;
 import org.graylog2.audit.AuditActor;
@@ -46,13 +51,16 @@ import org.graylog2.cluster.NodeService;
 import org.graylog2.configuration.ElasticsearchClientConfiguration;
 import org.graylog2.configuration.ElasticsearchConfiguration;
 import org.graylog2.configuration.EmailConfiguration;
+import org.graylog2.configuration.HttpConfiguration;
 import org.graylog2.configuration.MongoDbConfiguration;
 import org.graylog2.configuration.VersionCheckConfiguration;
+import org.graylog2.contentpacks.ContentPacksModule;
 import org.graylog2.dashboards.DashboardBindings;
 import org.graylog2.decorators.DecoratorBindings;
 import org.graylog2.indexer.IndexerBindings;
 import org.graylog2.indexer.retention.RetentionStrategyBindings;
 import org.graylog2.indexer.rotation.RotationStrategyBindings;
+import org.graylog2.inputs.transports.NettyTransportConfiguration;
 import org.graylog2.messageprocessors.MessageProcessorModule;
 import org.graylog2.migrations.MigrationsModule;
 import org.graylog2.notifications.Notification;
@@ -62,6 +70,7 @@ import org.graylog2.plugin.ServerStatus;
 import org.graylog2.plugin.Tools;
 import org.graylog2.plugin.system.NodeId;
 import org.graylog2.shared.UI;
+import org.graylog2.shared.bindings.MessageInputBindings;
 import org.graylog2.shared.bindings.ObjectMapperModule;
 import org.graylog2.shared.bindings.RestApiBindings;
 import org.graylog2.shared.system.activities.Activity;
@@ -85,12 +94,15 @@ public class Server extends ServerBootstrap {
     private static final Logger LOG = LoggerFactory.getLogger(Server.class);
 
     private static final Configuration configuration = new Configuration();
+    private final HttpConfiguration httpConfiguration = new HttpConfiguration();
     private final ElasticsearchConfiguration elasticsearchConfiguration = new ElasticsearchConfiguration();
     private final ElasticsearchClientConfiguration elasticsearchClientConfiguration = new ElasticsearchClientConfiguration();
     private final EmailConfiguration emailConfiguration = new EmailConfiguration();
     private final MongoDbConfiguration mongoDbConfiguration = new MongoDbConfiguration();
     private final VersionCheckConfiguration versionCheckConfiguration = new VersionCheckConfiguration();
     private final KafkaJournalConfiguration kafkaJournalConfiguration = new KafkaJournalConfiguration();
+    private final NettyTransportConfiguration nettyTransportConfiguration = new NettyTransportConfiguration();
+    private final PipelineConfig pipelineConfiguration = new PipelineConfig();
 
     public Server() {
         super("server", configuration);
@@ -115,6 +127,7 @@ public class Server extends ServerBootstrap {
             new MessageProcessorModule(),
             new AlarmCallbackBindings(),
             new InitializerBindings(),
+            new MessageInputBindings(),
             new MessageOutputBindings(configuration, chainingClassLoader),
             new RotationStrategyBindings(),
             new RetentionStrategyBindings(),
@@ -128,7 +141,12 @@ public class Server extends ServerBootstrap {
             new AuditBindings(),
             new AlertConditionBindings(),
             new IndexerBindings(),
-            new MigrationsModule()
+            new MigrationsModule(),
+            new NetFlowPluginModule(),
+            new CEFInputModule(),
+            new MapWidgetModule(),
+            new SidecarModule(),
+            new ContentPacksModule()
         );
 
         return modules.build();
@@ -137,12 +155,15 @@ public class Server extends ServerBootstrap {
     @Override
     protected List<Object> getCommandConfigurationBeans() {
         return Arrays.asList(configuration,
+                httpConfiguration,
                 elasticsearchConfiguration,
                 elasticsearchClientConfiguration,
                 emailConfiguration,
                 mongoDbConfiguration,
                 versionCheckConfiguration,
-                kafkaJournalConfiguration);
+                kafkaJournalConfiguration,
+                nettyTransportConfiguration,
+                pipelineConfiguration);
     }
 
     @Override
@@ -153,7 +174,7 @@ public class Server extends ServerBootstrap {
         final ActivityWriter activityWriter = injector.getInstance(ActivityWriter.class);
         nodeService.registerServer(serverStatus.getNodeId().toString(),
                 configuration.isMaster(),
-                configuration.getRestTransportUri(),
+                httpConfiguration.getHttpPublishUri(),
                 Tools.getLocalCanonicalHostname());
         serverStatus.setLocalMode(isLocal());
         if (configuration.isMaster() && !nodeService.isOnlyMaster(serverStatus.getNodeId())) {

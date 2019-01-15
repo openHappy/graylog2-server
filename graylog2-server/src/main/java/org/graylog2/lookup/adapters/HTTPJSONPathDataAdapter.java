@@ -46,19 +46,20 @@ import org.graylog2.plugin.lookup.LookupCachePurge;
 import org.graylog2.plugin.lookup.LookupDataAdapter;
 import org.graylog2.plugin.lookup.LookupDataAdapterConfiguration;
 import org.graylog2.plugin.lookup.LookupResult;
-import org.hibernate.validator.constraints.NotEmpty;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import javax.validation.constraints.NotEmpty;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 
@@ -118,10 +119,14 @@ public class HTTPJSONPathDataAdapter extends LookupDataAdapter {
             this.multiJsonPath = JsonPath.compile(config.multiValueJSONPath().get());
         }
 
-        this.headers = new Headers.Builder()
+        final Headers.Builder headersBuilder = new Headers.Builder()
                 .add(HttpHeaders.USER_AGENT, config.userAgent())
-                .add(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON)
-                .build();
+                .add(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON);
+
+        if (config.headers() != null) {
+            config.headers().forEach(headersBuilder::set);
+        }
+        this.headers = headersBuilder.build();
     }
 
     @Override
@@ -255,6 +260,7 @@ public class HTTPJSONPathDataAdapter extends LookupDataAdapter {
                     .url("")
                     .singleValueJSONPath("$.value")
                     .userAgent("Graylog Lookup - https://www.graylog.org/")
+                    .headers(Collections.emptyMap())
                     .build();
         }
     }
@@ -284,6 +290,10 @@ public class HTTPJSONPathDataAdapter extends LookupDataAdapter {
         @JsonProperty("user_agent")
         @NotEmpty
         public abstract String userAgent();
+
+        @JsonProperty("headers")
+        @Nullable
+        public abstract Map<String, String> headers();
 
         public static Builder builder() {
             return new AutoValue_HTTPJSONPathDataAdapter_Config.Builder();
@@ -332,6 +342,9 @@ public class HTTPJSONPathDataAdapter extends LookupDataAdapter {
 
             @JsonProperty("user_agent")
             public abstract Builder userAgent(String userAgent);
+
+            @JsonProperty("headers")
+            public abstract Builder headers(Map<String, String> headers);
 
             public abstract Config build();
         }

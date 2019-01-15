@@ -35,13 +35,13 @@ import org.graylog2.plugin.lookup.LookupDataAdapter;
 import org.graylog2.plugin.lookup.LookupDataAdapterConfiguration;
 import org.graylog2.plugin.lookup.LookupResult;
 import org.graylog2.plugin.utilities.FileInfo;
-import org.hibernate.validator.constraints.NotEmpty;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.Size;
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,6 +50,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -64,7 +65,7 @@ public class CSVFileDataAdapter extends LookupDataAdapter {
     private final Config config;
     private final AtomicReference<Map<String, String>> lookupRef = new AtomicReference<>(ImmutableMap.of());
 
-    private FileInfo fileInfo;
+    private FileInfo fileInfo = FileInfo.empty();
 
     @Inject
     public CSVFileDataAdapter(@Assisted("id") String id,
@@ -139,7 +140,8 @@ public class CSVFileDataAdapter extends LookupDataAdapter {
                         if (!isNullOrEmpty(column)) {
                             if (config.keyColumn().equals(column)) {
                                 keyColumn = col;
-                            } else if (config.valueColumn().equals(column)) {
+                            }
+                            if (config.valueColumn().equals(column)) {
                                 valueColumn = col;
                             }
                         }
@@ -150,7 +152,11 @@ public class CSVFileDataAdapter extends LookupDataAdapter {
                     if (keyColumn < 0 || valueColumn < 0) {
                         throw new IllegalStateException("Couldn't detect column number for key or value - check CSV file format");
                     }
-                    newLookupBuilder.put(next[keyColumn], next[valueColumn]);
+                    if (config.isCaseInsensitiveLookup()) {
+                        newLookupBuilder.put(next[keyColumn].toLowerCase(Locale.ENGLISH), next[valueColumn]);
+                    } else {
+                        newLookupBuilder.put(next[keyColumn], next[valueColumn]);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -169,7 +175,8 @@ public class CSVFileDataAdapter extends LookupDataAdapter {
 
     @Override
     public LookupResult doGet(Object key) {
-        final String value = lookupRef.get().get(String.valueOf(key));
+        final String stringKey = config.isCaseInsensitiveLookup() ? String.valueOf(key).toLowerCase(Locale.ENGLISH) : String.valueOf(key);
+        final String value = lookupRef.get().get(stringKey);
 
         if (value == null) {
             return LookupResult.empty();
@@ -208,6 +215,7 @@ public class CSVFileDataAdapter extends LookupDataAdapter {
                     .keyColumn("key")
                     .valueColumn("value")
                     .checkInterval(60)
+                    .caseInsensitiveLookup(false)
                     .build();
         }
     }
@@ -263,6 +271,13 @@ public class CSVFileDataAdapter extends LookupDataAdapter {
         @Min(1)
         public abstract long checkInterval();
 
+        @JsonProperty("case_insensitive_lookup")
+        public abstract Optional<Boolean> caseInsensitiveLookup();
+
+        public boolean isCaseInsensitiveLookup() {
+            return caseInsensitiveLookup().isPresent() && caseInsensitiveLookup().get();
+        }
+
         public static Builder builder() {
             return new AutoValue_CSVFileDataAdapter_Config.Builder();
         }
@@ -303,6 +318,9 @@ public class CSVFileDataAdapter extends LookupDataAdapter {
 
             @JsonProperty("check_interval")
             public abstract Builder checkInterval(long checkInterval);
+
+            @JsonProperty("case_insensitive_lookup")
+            public abstract Builder caseInsensitiveLookup(Boolean caseInsensitiveLookup);
 
             public abstract Config build();
         }

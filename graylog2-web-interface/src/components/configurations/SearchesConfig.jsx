@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import { Button, Row, Col } from 'react-bootstrap';
 import { BootstrapModalForm, Input } from 'components/bootstrap';
 import { IfPermitted, ISODurationInput } from 'components/common';
@@ -10,10 +12,12 @@ import {} from 'moment-duration-format';
 import TimeRangeOptionsForm from './TimeRangeOptionsForm';
 import TimeRangeOptionsSummary from './TimeRangeOptionsSummary';
 
-const SearchesConfig = React.createClass({
+const SearchesConfig = createReactClass({
+  displayName: 'SearchesConfig',
+
   propTypes: {
-    config: React.PropTypes.object.isRequired,
-    updateConfig: React.PropTypes.func.isRequired,
+    config: PropTypes.object.isRequired,
+    updateConfig: PropTypes.func.isRequired,
   },
 
   getInitialState() {
@@ -21,6 +25,7 @@ const SearchesConfig = React.createClass({
     const relativeTimerangeOptions = this._getPropConfigValue('relative_timerange_options');
     const surroundingTimerangeOptions = this._getPropConfigValue('surrounding_timerange_options');
     const surroundingFilterFields = this._getPropConfigValue('surrounding_filter_fields');
+    const analysisDisabledFields = this._getPropConfigValue('analysis_disabled_fields');
 
     return {
       config: {
@@ -28,6 +33,7 @@ const SearchesConfig = React.createClass({
         relative_timerange_options: relativeTimerangeOptions,
         surrounding_timerange_options: surroundingTimerangeOptions,
         surrounding_filter_fields: surroundingFilterFields,
+        analysis_disabled_fields: analysisDisabledFields,
       },
       limitEnabled: moment.duration(queryTimeRangeLimit).asMilliseconds() > 0,
       relativeTimeRangeOptionsUpdate: undefined,
@@ -67,6 +73,10 @@ const SearchesConfig = React.createClass({
     this.setState({ surroundingFilterFields: e.target.value });
   },
 
+  _onAnalysisDisabledFieldsUpdate(e) {
+    this.setState({ analysisDisabledFields: e.target.value });
+  },
+
   _onChecked() {
     const config = ObjectUtils.clone(this.state.config);
 
@@ -83,6 +93,10 @@ const SearchesConfig = React.createClass({
 
   _isEnabled() {
     return this.state.limitEnabled;
+  },
+
+  _splitStringList(stringList) {
+    return stringList.split(',').map(f => f.trim()).filter(f => f.length > 0);
   },
 
   _saveConfig() {
@@ -110,12 +124,13 @@ const SearchesConfig = React.createClass({
 
     // Make sure to update filter fields
     if (this.state.surroundingFilterFields) {
-      update.surrounding_filter_fields = this.state.surroundingFilterFields
-        .split(',')
-        .map(f => f.trim())
-        .filter(f => f.length > 0);
-
+      update.surrounding_filter_fields = this._splitStringList(this.state.surroundingFilterFields);
       this.setState({ surroundingFilterFields: undefined });
+    }
+
+    if (this.state.analysisDisabledFields) {
+      update.analysis_disabled_fields = this._splitStringList(this.state.analysisDisabledFields);
+      this.setState({ analysisDisabledFields: undefined });
     }
 
     this.props.updateConfig(update).then(() => {
@@ -129,11 +144,11 @@ const SearchesConfig = React.createClass({
   },
 
   _openModal() {
-    this.refs.searchesConfigModal.open();
+    this.searchesConfigModal.open();
   },
 
   _closeModal() {
-    this.refs.searchesConfigModal.close();
+    this.searchesConfigModal.close();
   },
 
   queryTimeRangeLimitValidator(milliseconds) {
@@ -160,6 +175,13 @@ const SearchesConfig = React.createClass({
       filterFieldsString = this.state.config.surrounding_filter_fields.join(', ');
     }
 
+    let analysisDisabledFields;
+    let analysisDisabledFieldsString;
+    if (this.state.config.analysis_disabled_fields) {
+      analysisDisabledFields = this.state.config.analysis_disabled_fields.map((f, idx) => <li key={idx}>{f}</li>);
+      analysisDisabledFieldsString = this.state.config.analysis_disabled_fields.join(', ');
+    }
+
     return (
       <div>
         <h2>Search Configuration</h2>
@@ -184,24 +206,32 @@ const SearchesConfig = React.createClass({
             <ul>
               {filterFields}
             </ul>
+
+            <strong>UI analysis disabled for fields</strong>
+            <ul>
+              {analysisDisabledFields}
+            </ul>
           </Col>
         </Row>
         <IfPermitted permissions="clusterconfigentry:edit">
           <Button bsStyle="info" bsSize="xs" onClick={this._openModal}>Update</Button>
         </IfPermitted>
 
-        <BootstrapModalForm ref="searchesConfigModal"
+        <BootstrapModalForm ref={(searchesConfigModal) => { this.searchesConfigModal = searchesConfigModal; }}
                             title="Update Search Configuration"
                             onSubmitForm={this._saveConfig}
                             onModalClose={this._resetConfig}
                             submitButtonText="Save">
           <fieldset>
-            <Input type="checkbox" label="Enable query limit"
+            <Input id="query-limit-checkbox"
+                   type="checkbox"
+                   label="Enable query limit"
                    name="enabled"
                    checked={this._isEnabled()}
                    onChange={this._onChecked} />
             {this._isEnabled() &&
-            <ISODurationInput duration={config.query_time_range_limit}
+            <ISODurationInput id="query-timerange-limit-field"
+                              duration={config.query_time_range_limit}
                               update={this._onUpdate('query_time_range_limit')}
                               label="Query time range limit (ISO8601 Duration)"
                               help={'The maximum time range for searches. (i.e. "P30D" for 30 days, "PT24H" for 24 hours)'}
@@ -221,11 +251,20 @@ const SearchesConfig = React.createClass({
                                   title="Surrounding Timerange Options"
                                   help={<span>Configure the available options for the <strong>surrounding</strong> time range selector as <strong>ISO8601 duration</strong></span>} />
 
-            <Input type="text"
+            <Input id="filter-fields-input"
+                   type="text"
                    label="Surrounding search filter fields"
                    onChange={this._onFilterFieldsUpdate}
                    value={this.state.surroundingFilterFields || filterFieldsString}
                    help="A ',' separated list of message fields that will be used as filter for the surrounding messages query."
+                   required />
+
+            <Input id="disabled-fields-input"
+                   type="text"
+                   label="Disabled analysis fields"
+                   onChange={this._onAnalysisDisabledFieldsUpdate}
+                   value={this.state.analysisDisabledFields || analysisDisabledFieldsString}
+                   help="A ',' separated list of message fields for which analysis features like QuickValues will be disabled in the web UI."
                    required />
           </fieldset>
         </BootstrapModalForm>

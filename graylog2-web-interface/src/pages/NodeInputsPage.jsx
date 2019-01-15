@@ -1,6 +1,8 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { LinkContainer } from 'react-router-bootstrap';
+import { Link } from 'react-router';
 
 import StoreProvider from 'injection/StoreProvider';
 const NodesStore = StoreProvider.getStore('Nodes');
@@ -16,20 +18,27 @@ function nodeFilter(state) {
   return state.nodes ? state.nodes[this.props.params.nodeId] : state.nodes;
 }
 
-const NodeInputsPage = React.createClass({
+const NodeInputsPage = createReactClass({
+  displayName: 'NodeInputsPage',
+
   propTypes: {
     params: PropTypes.object.isRequired,
   },
+
   mixins: [Reflux.connect(CurrentUserStore), Reflux.connectFilter(NodesStore, 'node', nodeFilter)],
+
   componentDidMount() {
     this.interval = setInterval(InputStatesStore.list, 2000);
   },
+
   componentWillUnmount() {
     clearInterval(this.interval);
   },
+
   _isLoading() {
     return !this.state.node;
   },
+
   render() {
     if (this._isLoading()) {
       return <Spinner />;
@@ -44,7 +53,7 @@ const NodeInputsPage = React.createClass({
             <span>Graylog nodes accept data via inputs. On this page you can see which inputs are running on this specific node.</span>
 
             <span>
-              You can launch and terminate inputs on your cluster <LinkContainer to={Routes.SYSTEM.INPUTS}><a>here</a></LinkContainer>.
+              You can launch and terminate inputs on your cluster <Link to={Routes.SYSTEM.INPUTS}>here</Link>.
             </span>
           </PageHeader>
           <InputsList permissions={this.state.currentUser.permissions} node={this.state.node} />

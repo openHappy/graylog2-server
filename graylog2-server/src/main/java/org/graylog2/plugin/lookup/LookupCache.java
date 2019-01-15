@@ -23,6 +23,7 @@ import com.codahale.metrics.Timer;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.util.concurrent.AbstractIdleService;
 import com.google.inject.assistedinject.Assisted;
+import org.graylog2.shared.metrics.MetricUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +45,6 @@ public abstract class LookupCache extends AbstractIdleService {
     private final Meter hitCount;
     private final Meter missCount;
     private final Timer lookupTimer;
-    private final Gauge entryCount;
 
     private AtomicReference<Throwable> error = new AtomicReference<>();
 
@@ -60,7 +60,13 @@ public abstract class LookupCache extends AbstractIdleService {
         this.hitCount = metricRegistry.meter(MetricRegistry.name("org.graylog2.lookup.caches", id, "hits"));
         this.missCount = metricRegistry.meter(MetricRegistry.name("org.graylog2.lookup.caches", id, "misses"));
         this.lookupTimer = metricRegistry.timer(MetricRegistry.name("org.graylog2.lookup.caches", id, "lookupTime"));
-        this.entryCount = metricRegistry.register(MetricRegistry.name("org.graylog2.lookup.caches", id, "entries"), () -> entryCount());
+        final Gauge<Long> entriesGauge = new Gauge<Long>() {
+            @Override
+            public Long getValue() {
+                return entryCount();
+            }
+        };
+        MetricUtils.safelyRegister(metricRegistry, MetricRegistry.name("org.graylog2.lookup.caches", id, "entries"), entriesGauge);
     }
 
     public void incrTotalCount() {
@@ -79,9 +85,13 @@ public abstract class LookupCache extends AbstractIdleService {
         return lookupTimer.time();
     }
 
-    public Gauge<Long> entryCount() {
-        // Returns -1 if the cache does not support counting entries
-        return () -> -1L;
+    /**
+     * Get the number of elements in this lookup cache.
+     *
+     * @return the number of elements in this lookup cache or {@code -1L} if the cache does not support counting entries
+     */
+    public long entryCount() {
+        return -1L;
     }
 
     @Override

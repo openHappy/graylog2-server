@@ -18,8 +18,10 @@ package org.graylog2.dashboards;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.mongodb.BasicDBObject;
 import org.bson.types.ObjectId;
 import org.graylog2.dashboards.widgets.DashboardWidget;
+import org.graylog2.dashboards.widgets.WidgetPosition;
 import org.graylog2.database.CollectionName;
 import org.graylog2.database.PersistedImpl;
 import org.graylog2.database.validators.DateValidator;
@@ -29,11 +31,18 @@ import org.graylog2.plugin.Tools;
 import org.graylog2.plugin.database.validators.Validator;
 import org.joda.time.DateTime;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static java.lang.Integer.parseInt;
 
 @CollectionName("dashboards")
 public class DashboardImpl extends PersistedImpl implements Dashboard {
+    public static final String FIELD_ID = "_id";
     public static final String FIELD_TITLE = "title";
     public static final String FIELD_DESCRIPTION = "description";
     public static final String FIELD_CONTENT_PACK = "content_pack";
@@ -70,6 +79,49 @@ public class DashboardImpl extends PersistedImpl implements Dashboard {
     @Override
     public void setDescription(String description) {
         this.fields.put(FIELD_DESCRIPTION, description);
+    }
+
+    @Override
+    public List<WidgetPosition> getPositions() {
+        final BasicDBObject positions = (BasicDBObject) fields.get(DashboardImpl.EMBEDDED_POSITIONS);
+        if (positions == null) {
+            return Collections.emptyList();
+        }
+
+        final List<WidgetPosition> result = new ArrayList<>(positions.size());
+        for ( String positionId : positions.keySet() ) {
+            final BasicDBObject position = (BasicDBObject) positions.get(positionId);
+            final int width = parseInt(position.get("width").toString());
+            final int height = parseInt(position.get("height").toString());
+            final int col = parseInt(position.get("col").toString());
+            final int row = parseInt(position.get("row").toString());
+            final WidgetPosition widgetPosition = WidgetPosition.builder()
+                    .id(positionId)
+                    .width(width)
+                    .height(height)
+                    .col(col)
+                    .row(row)
+                    .build();
+            result.add(widgetPosition);
+        }
+        return result;
+    }
+
+    @Override
+    public void setPositions(List<WidgetPosition> widgetPositions) {
+        checkNotNull(widgetPositions, "widgetPositions must be given");
+        final Map<String, Map<String, Integer>> positions = new HashMap<>(widgetPositions.size());
+        for (WidgetPosition widgetPosition : widgetPositions) {
+            Map<String, Integer> position = new HashMap(4);
+            position.put("width", widgetPosition.width());
+            position.put("height", widgetPosition.height());
+            position.put("col", widgetPosition.col());
+            position.put("row", widgetPosition.row());
+            positions.put(widgetPosition.id(), position);
+        }
+        Map<String, Object> fields = getFields();
+        checkNotNull(fields, "No fields found!");
+        fields.put(DashboardImpl.EMBEDDED_POSITIONS, positions);
     }
 
     @Override
@@ -129,8 +181,8 @@ public class DashboardImpl extends PersistedImpl implements Dashboard {
         Map<String, Object> result = Maps.newHashMap(fields);
 
         // TODO this sucks and should be done somewhere globally.
-        result.remove("_id");
-        result.put("id", ((ObjectId) fields.get("_id")).toHexString());
+        result.remove(FIELD_ID);
+        result.put("id", ((ObjectId) fields.get(FIELD_ID)).toHexString());
         result.remove(FIELD_CREATED_AT);
         result.put(FIELD_CREATED_AT, Tools.getISO8601String((DateTime) fields.get(FIELD_CREATED_AT)));
 
@@ -144,5 +196,4 @@ public class DashboardImpl extends PersistedImpl implements Dashboard {
 
         return result;
     }
-
 }

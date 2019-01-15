@@ -1,7 +1,8 @@
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { Row, Col } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
+import { Link } from 'react-router';
 
 import StoreProvider from 'injection/StoreProvider';
 const CurrentUserStore = StoreProvider.getStore('CurrentUser');
@@ -12,16 +13,20 @@ import SupportLink from 'components/support/SupportLink';
 import { DocumentTitle, Spinner } from 'components/common';
 import Routes from 'routing/Routes';
 
-const StreamOutputsPage = React.createClass({
+const StreamOutputsPage = createReactClass({
+  displayName: 'StreamOutputsPage',
   mixins: [Reflux.connect(CurrentUserStore)],
+
   getInitialState() {
     return { stream: undefined };
   },
+
   componentDidMount() {
     StreamsStore.get(this.props.params.streamId, (stream) => {
       this.setState({ stream: stream });
     });
   },
+
   render() {
     if (!this.state.stream) {
       return <Spinner />;
@@ -46,7 +51,7 @@ const StreamOutputsPage = React.createClass({
               <SupportLink>
                 <i>Removing</i> an output removes it from this stream but it will still be in the list of available outputs.
                 Deleting an output <i>globally</i> will remove it from this and all other streams and terminate it.
-                You can see all defined outputs in details at the {' '} <LinkContainer to={Routes.SYSTEM.OUTPUTS}><a>global output list</a></LinkContainer>.
+                You can see all defined outputs in details at the {' '} <Link to={Routes.SYSTEM.OUTPUTS}>global output list</Link>.
               </SupportLink>
             </Col>
           </Row>

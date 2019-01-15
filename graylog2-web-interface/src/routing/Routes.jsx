@@ -1,6 +1,6 @@
-import AppConfig from 'util/AppConfig';
-import { PluginStore } from 'graylog-web-plugin/plugin';
-import URI from 'urijs';
+import AppConfig from "util/AppConfig";
+import {PluginStore} from "graylog-web-plugin/plugin";
+import URI from "urijs";
 
 /*
  * Global registry of plugin routes. Route names are generated automatically from the route path, by removing
@@ -43,6 +43,7 @@ PluginStore.exports('routes').forEach((pluginRoute) => {
 
 const Routes = {
   STARTPAGE: '/',
+  NOTFOUND: '/notfound',
   SEARCH: '/search',
   STREAMS: '/streams',
   ALERTS: {
@@ -60,6 +61,9 @@ const Routes = {
     CONTENTPACKS: {
       LIST: '/system/contentpacks',
       EXPORT: '/system/contentpacks/export',
+      CREATE: '/system/contentpacks/create',
+      edit: (contentPackId, contentPackRev) => { return `/system/contentpacks/${contentPackId}/${contentPackRev}/edit`; },
+      show: contentPackId => `/system/contentpacks/${contentPackId}`,
     },
     GROKPATTERNS: '/system/grokpatterns',
     INDICES: {
@@ -92,6 +96,9 @@ const Routes = {
       USERS: {
         CREATE: '/system/authentication/users/new',
         edit: username => `/system/authentication/users/edit/${username}`,
+        TOKENS: {
+          edit: username => `/system/authentication/users/tokens/${username}`,
+        },
         LIST: '/system/authentication/users',
       },
       PROVIDERS: {
@@ -116,6 +123,24 @@ const Routes = {
         show: adapterName => `/system/lookuptables/data_adapter/${adapterName}`,
         edit: adapterName => `/system/lookuptables/data_adapter/${adapterName}/edit`,
       },
+    },
+    PIPELINES: {
+      OVERVIEW: '/system/pipelines',
+      PIPELINE: pipelineId => `/system/pipelines/${pipelineId}`,
+      RULES: '/system/pipelines/rules',
+      RULE: ruleId => `/system/pipelines/rules/${ruleId}`,
+      SIMULATOR: '/system/pipelines/simulate',
+    },
+    ENTERPRISE: '/system/enterprise',
+    SIDECARS: {
+      OVERVIEW: '/system/sidecars',
+      STATUS: sidecarId => `/system/sidecars/${sidecarId}/status`,
+      ADMINISTRATION: '/system/sidecars/administration',
+      CONFIGURATION: '/system/sidecars/configuration',
+      NEW_CONFIGURATION: '/system/sidecars/configuration/new',
+      EDIT_CONFIGURATION: configurationId => `/system/sidecars/configuration/edit/${configurationId}`,
+      NEW_COLLECTOR: '/system/sidecars/collector/new',
+      EDIT_COLLECTOR: collectorId => `/system/sidecars/collector/edit/${collectorId}`,
     },
   },
   search_with_query: (query, rangeType, timeRange) => {
@@ -155,10 +180,13 @@ const Routes = {
   stream_search: (streamId, query, timeRange, resolution) => {
     return Routes._common_search_url(`${Routes.STREAMS}/${streamId}/search`, query, timeRange, resolution);
   },
-  legacy_stream_search: streamId => `/streams/${streamId}/messages`,
+  stream_alerts: streamId => `/streams/${streamId}/alerts`,
 
+  legacy_stream_search: streamId => `/streams/${streamId}/messages`,
   show_alert: alertId => `${Routes.ALERTS.LIST}/${alertId}`,
   show_alert_condition: (streamId, conditionId) => `${Routes.ALERTS.CONDITIONS}/${streamId}/${conditionId}`,
+  new_alert_condition_for_stream: streamId => `${Routes.ALERTS.NEW_CONDITION}?stream_id=${streamId}`,
+  new_alert_notification_for_stream: streamId => `${Routes.ALERTS.NEW_NOTIFICATION}?stream_id=${streamId}`,
 
   dashboard_show: dashboardId => `/dashboards/${dashboardId}`,
 
@@ -195,12 +223,12 @@ const qualifyUrls = (routes, appPrefix) => {
   Object.keys(routes).forEach((routeName) => {
     switch (typeof routes[routeName]) {
       case 'string':
-        qualifiedRoutes[routeName] = `${appPrefix}${routes[routeName]}`;
+        qualifiedRoutes[routeName] = new URI(`${appPrefix}/${routes[routeName]}`).normalizePath().resource();
         break;
       case 'function':
         qualifiedRoutes[routeName] = (...params) => {
           const result = routes[routeName](...params);
-          return `${appPrefix}${result}`;
+          return new URI(`${appPrefix}/${result}`).normalizePath().resource();
         };
         break;
       case 'object':

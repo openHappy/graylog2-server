@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Row, Col, Alert } from 'react-bootstrap';
 
@@ -12,15 +13,14 @@ import Spinner from 'components/common/Spinner';
 
 import CreateStreamButton from './CreateStreamButton';
 
-const StreamComponent = React.createClass({
-  propTypes: {
-    currentUser: React.PropTypes.object.isRequired,
-    onStreamSave: React.PropTypes.func.isRequired,
-    indexSets: React.PropTypes.array.isRequired,
-  },
-  getInitialState() {
-    return {};
-  },
+class StreamComponent extends React.Component {
+  static propTypes = {
+    currentUser: PropTypes.object.isRequired,
+    onStreamSave: PropTypes.func.isRequired,
+    indexSets: PropTypes.array.isRequired,
+  };
+
+  state = {};
 
   componentDidMount() {
     this.loadData();
@@ -29,41 +29,41 @@ const StreamComponent = React.createClass({
     });
     StreamsStore.onChange(this.loadData);
     StreamRulesStore.onChange(this.loadData);
-  },
+  }
 
   componentDidUpdate() {
     if (this.state.filteredStreams === null) {
       this._filterStreams();
     }
-  },
+  }
 
   componentWillUnmount() {
     StreamsStore.unregister(this.loadData);
     StreamRulesStore.unregister(this.loadData);
-  },
+  }
 
-  loadData() {
+  loadData = () => {
     StreamsStore.load((streams) => {
       this.setState({
         streams: streams,
         filteredStreams: null,
       });
     });
-  },
+  };
 
-  _filterStreams() {
-    if (this.refs.streamFilter) {
-      this.refs.streamFilter.filterData();
+  _filterStreams = () => {
+    if (this.streamFilter) {
+      this.streamFilter.filterData();
     }
-  },
+  };
 
-  _updateFilteredStreams(filteredStreams) {
+  _updateFilteredStreams = (filteredStreams) => {
     this.setState({ filteredStreams: filteredStreams });
-  },
+  };
 
-  _isLoading() {
+  _isLoading = () => {
     return !(this.state.streams && this.state.streamRuleTypes);
-  },
+  };
 
   render() {
     if (this._isLoading()) {
@@ -78,7 +78,7 @@ const StreamComponent = React.createClass({
       const createStreamButton = (
         <IfPermitted permissions="streams:create">
           <CreateStreamButton bsSize="small" bsStyle="link" className="btn-text"
-                              buttonText="Create one now" ref="createStreamButton"
+                              buttonText="Create one now"
                               indexSets={this.props.indexSets}
                               onSave={this.props.onStreamSave} />
         </IfPermitted>
@@ -99,7 +99,8 @@ const StreamComponent = React.createClass({
       <div>
         <Row className="row-sm">
           <Col md={8}>
-            <TypeAheadDataFilter ref="streamFilter"
+            <TypeAheadDataFilter id="stream-data-filter"
+                                 ref={(streamFilter) => { this.streamFilter = streamFilter; }}
                                  label="Filter streams"
                                  data={this.state.streams}
                                  displayKey={'title'}
@@ -115,7 +116,7 @@ const StreamComponent = React.createClass({
         </Row>
       </div>
     );
-  },
-});
+  }
+}
 
 export default StreamComponent;

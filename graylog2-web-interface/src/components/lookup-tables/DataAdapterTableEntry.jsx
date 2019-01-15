@@ -1,5 +1,7 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { LinkContainer } from 'react-router-bootstrap';
+import { Link } from 'react-router';
 
 import { Button } from 'react-bootstrap';
 
@@ -12,25 +14,22 @@ import { MetricContainer, CounterRate } from 'components/metrics';
 
 const { LookupTableDataAdaptersActions } = CombinedProvider.get('LookupTableDataAdapters');
 
-const DataAdapterTableEntry = React.createClass({
+class DataAdapterTableEntry extends React.Component {
+  static propTypes = {
+    adapter: PropTypes.object.isRequired,
+    error: PropTypes.string,
+  };
 
-  propTypes: {
-    adapter: React.PropTypes.object.isRequired,
-    error: React.PropTypes.string,
-  },
+  static defaultProps = {
+    error: null,
+  };
 
-  getDefaultProps() {
-    return {
-      error: null,
-    };
-  },
-
-  _onDelete() {
+  _onDelete = () => {
 // eslint-disable-next-line no-alert
     if (window.confirm(`Are you sure you want to delete data adapter "${this.props.adapter.title}"?`)) {
       LookupTableDataAdaptersActions.delete(this.props.adapter.id).then(() => LookupTableDataAdaptersActions.reloadPage());
     }
-  },
+  };
 
   render() {
     return (
@@ -38,7 +37,7 @@ const DataAdapterTableEntry = React.createClass({
         <tr>
           <td>
             {this.props.error && <ErrorPopover errorText={this.props.error} title="Lookup table problem" placement="right" />}
-            <LinkContainer to={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.show(this.props.adapter.name)}><a>{this.props.adapter.title}</a></LinkContainer>
+            <Link to={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.show(this.props.adapter.name)}>{this.props.adapter.title}</Link>
             <ContentPackMarker contentPack={this.props.adapter.content_pack} marginLeft={5} />
           </td>
           <td>{this.props.adapter.description}</td>
@@ -58,9 +57,8 @@ const DataAdapterTableEntry = React.createClass({
         </tr>
       </tbody>
     );
-  },
-
-});
+  }
+}
 
 export default DataAdapterTableEntry;
 

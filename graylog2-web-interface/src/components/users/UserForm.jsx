@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { Button, Row, Col, Alert, Panel } from 'react-bootstrap';
 import Routes from 'routing/Routes';
@@ -9,10 +11,13 @@ import UserNotification from 'util/UserNotification';
 import ValidationsUtils from 'util/ValidationsUtils';
 import FormsUtils from 'util/FormsUtils';
 import ObjectUtils from 'util/ObjectUtils';
+import history from 'util/History';
 
+import CombinedProvider from 'injection/CombinedProvider';
 import StoreProvider from 'injection/StoreProvider';
+
 const StreamsStore = StoreProvider.getStore('Streams');
-const DashboardsStore = StoreProvider.getStore('Dashboards');
+const { DashboardsStore } = CombinedProvider.get('Dashboards');
 const CurrentUserStore = StoreProvider.getStore('CurrentUser');
 const UsersStore = StoreProvider.getStore('Users');
 
@@ -20,27 +25,27 @@ import TimeoutInput from 'components/users/TimeoutInput';
 import EditRolesForm from 'components/users/EditRolesForm';
 import { IfPermitted, MultiSelect, TimezoneSelect, Spinner } from 'components/common';
 
-const UserForm = React.createClass({
+const UserForm = createReactClass({
+  displayName: 'UserForm',
+
   propTypes: {
-    user: React.PropTypes.object.isRequired,
-    history: React.PropTypes.object,
+    user: PropTypes.object.isRequired,
   },
-  mixins: [PermissionsMixin, Reflux.connect(CurrentUserStore)],
+
+  mixins: [PermissionsMixin, Reflux.connect(CurrentUserStore), Reflux.connect(DashboardsStore)],
+
   getInitialState() {
     return {
       streams: undefined,
-      dashboards: undefined,
       user: this._getUserStateFromProps(this.props),
     };
   },
+
   componentDidMount() {
     StreamsStore.listStreams().then((streams) => {
       this.setState({
         streams: streams.sort((s1, s2) => s1.title.localeCompare(s2.title)),
       });
-    });
-    DashboardsStore.listDashboards().then((dashboards) => {
-      this.setState({ dashboards: dashboards.toArray().sort((d1, d2) => d1.title.localeCompare(d2.title)) });
     });
   },
 
@@ -51,6 +56,8 @@ const UserForm = React.createClass({
       });
     }
   },
+
+  inputs: {},
 
   _getUserStateFromProps(props) {
     return {
@@ -70,15 +77,17 @@ const UserForm = React.createClass({
       return { value: item.id, label: item.title };
     });
   },
+
   formatSelectedOptions(permissions, permission, collection) {
     return collection
       .filter(item => this.isPermitted(permissions, [`${permission}:${item.id}`]))
       .map(item => item.id)
       .join(',');
   },
+
   _onPasswordChange() {
-    const passwordField = this.refs.password.getInputDOMNode();
-    const passwordConfirmField = this.refs.password_repeat.getInputDOMNode();
+    const passwordField = this.inputs.password.getInputDOMNode();
+    const passwordConfirmField = this.inputs.password_repeat.getInputDOMNode();
 
     if (passwordField.value !== '' && passwordConfirmField.value !== '') {
       ValidationsUtils.setFieldValidity(passwordConfirmField, passwordField.value !== passwordConfirmField.value, 'Passwords do not match');
@@ -89,15 +98,15 @@ const UserForm = React.createClass({
     evt.preventDefault();
     const request = {};
 
-    if (this.refs.old_password) {
-      request.old_password = this.refs.old_password.getValue();
+    if (this.inputs.old_password) {
+      request.old_password = this.inputs.old_password.getValue();
     }
-    request.password = this.refs.password.getValue();
+    request.password = this.inputs.password.getValue();
 
     UsersStore.changePassword(this.props.user.username, request).then(() => {
       UserNotification.success('Password updated successfully.', 'Success');
       if (this.isPermitted(this.state.currentUser.permissions, ['users:list'])) {
-        this.props.history.replaceState(null, Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
+        history.replace(Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
       }
     }, () => {
       UserNotification.error('Could not update password. Please verify that your current password is correct.', 'Updating password failed');
@@ -110,7 +119,7 @@ const UserForm = React.createClass({
     UsersStore.update(this.props.user.username, this.state.user).then(() => {
       UserNotification.success('User updated successfully.', 'Success');
       if (this.isPermitted(this.state.currentUser.permissions, ['users:list'])) {
-        this.props.history.replaceState(null, Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
+        history.replace(Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
       }
       if (this.props.user.username === this.state.currentUser.username) {
         CurrentUserStore.reload();
@@ -177,7 +186,7 @@ const UserForm = React.createClass({
   },
 
   _onCancel() {
-    this.props.history.goBack();
+    history.goBack();
   },
 
   render() {
@@ -187,6 +196,7 @@ const UserForm = React.createClass({
 
     const user = this.state.user;
     const permissions = this.state.currentUser.permissions;
+    const dashboards = this.state.dashboards.toArray().sort((d1, d2) => d1.title.localeCompare(d2.title));
 
     let requiresOldPassword = true;
     if (this.isPermitted(permissions, 'users:passwordchange:*')) {
@@ -197,8 +207,8 @@ const UserForm = React.createClass({
     const streamReadOptions = this.formatSelectedOptions(this.state.user.permissions, 'streams:read', this.state.streams);
     const streamEditOptions = this.formatSelectedOptions(this.state.user.permissions, 'streams:edit', this.state.streams);
 
-    const dashboardReadOptions = this.formatSelectedOptions(this.state.user.permissions, 'dashboards:read', this.state.dashboards);
-    const dashboardEditOptions = this.formatSelectedOptions(this.state.user.permissions, 'dashboards:edit', this.state.dashboards);
+    const dashboardReadOptions = this.formatSelectedOptions(this.state.user.permissions, 'dashboards:read', dashboards);
+    const dashboardEditOptions = this.formatSelectedOptions(this.state.user.permissions, 'dashboards:edit', dashboards);
 
     return (
       <div>
@@ -223,7 +233,7 @@ const UserForm = React.createClass({
                        label="Full Name" help="Give a descriptive name for this account, e.g. the full name."
                        required />
 
-                <Input ref="email" name="email" id="email" type="email" maxLength={254} value={user.email}
+                <Input ref={(email) => { this.inputs['email'] = email; }} name="email" id="email" type="email" maxLength={254} value={user.email}
                        onChange={this._bindValue} labelClassName="col-sm-3" wrapperClassName="col-sm-9"
                        label="Email Address" help="Give the contact email address." required />
 
@@ -238,13 +248,13 @@ const UserForm = React.createClass({
                       </Col>
                       <label className="col-sm-3 control-label" htmlFor="streampermissions">Streams Permissions</label>
                       <Col sm={9}>
-                        <MultiSelect ref="streamReadOptions" placeholder="Choose streams read permissions..."
+                        <MultiSelect ref={(streamReadOptions) => { this.inputs['streamReadOptions'] = streamReadOptions; }} placeholder="Choose streams read permissions..."
                                      options={this.formatMultiselectOptions(this.state.streams)}
                                      value={streamReadOptions}
                                      onChange={this._onPermissionsChange('streams', 'read')} />
                         <span className="help-block">Choose streams the user can <strong>view</strong>
                           . Removing read access will remove edit access, too.</span>
-                        <MultiSelect ref="streamEditOptions" placeholder="Choose streams edit permissions..."
+                        <MultiSelect ref={(streamEditOptions) => { this.inputs['streamEditOptions'] = streamEditOptions; }} placeholder="Choose streams edit permissions..."
                                      options={this.formatMultiselectOptions(this.state.streams)}
                                      value={streamEditOptions}
                                      onChange={this._onPermissionsChange('streams', 'edit')} />
@@ -255,14 +265,14 @@ const UserForm = React.createClass({
                     <div className="form-group">
                       <label className="col-sm-3 control-label" htmlFor="dashboardpermissions">Dashboard Permissions</label>
                       <Col sm={9}>
-                        <MultiSelect ref="dashboardReadOptions" placeholder="Choose dashboards read permissions..."
-                                     options={this.formatMultiselectOptions(this.state.dashboards)}
+                        <MultiSelect ref={(dashboardReadOptions) => { this.inputs['dashboardReadOptions'] = dashboardReadOptions; }} placeholder="Choose dashboards read permissions..."
+                                     options={this.formatMultiselectOptions(dashboards)}
                                      value={dashboardReadOptions}
                                      onChange={this._onPermissionsChange('dashboards', 'read')} />
                         <span className="help-block">Choose dashboards the user can <strong>view</strong>
                           . Removing read access will remove edit access, too.</span>
-                        <MultiSelect ref="dashboardEditOptions" placeholder="Choose dashboards edit permissions..."
-                                     options={this.formatMultiselectOptions(this.state.dashboards)}
+                        <MultiSelect ref={(dashboardEditOptions) => { this.inputs['dashboardEditOptions'] = dashboardEditOptions; }} placeholder="Choose dashboards edit permissions..."
+                                     options={this.formatMultiselectOptions(dashboards)}
                                      value={dashboardEditOptions}
                                      onChange={this._onPermissionsChange('dashboards', 'edit')} />
                         <span className="help-block">Choose dashboards the user can <strong>edit</strong>
@@ -272,14 +282,16 @@ const UserForm = React.createClass({
                   </span>
                 </IfPermitted>
                 <IfPermitted permissions="*">
-                  <TimeoutInput ref="session_timeout_ms" value={user.session_timeout_ms} labelSize={3} controlSize={9}
+                  <TimeoutInput ref={(session_timeout_ms) => { this.inputs['session_timeout_ms'] = session_timeout_ms; }} value={user.session_timeout_ms} labelSize={3} controlSize={9}
                                 onChange={this._onFieldChange('session_timeout_ms')} />
                 </IfPermitted>
 
-                <Input label="Time Zone"
+                <Input id="timezone-select"
+                       label="Time Zone"
                        help="Choose your local time zone or leave it as it is to use the system's default."
-                       labelClassName="col-sm-3" wrapperClassName="col-sm-9">
-                  <TimezoneSelect ref="timezone" className="timezone-select" value={user.timezone}
+                       labelClassName="col-sm-3"
+                       wrapperClassName="col-sm-9">
+                  <TimezoneSelect ref={(timezone) => { this.inputs['timezone'] = timezone; }} className="timezone-select" value={user.timezone}
                                   onChange={this._onFieldChange('timezone')} />
                 </Input>
 
@@ -315,17 +327,17 @@ const UserForm = React.createClass({
               :
                 <form className="form-horizontal" style={{ marginTop: 10 }} onSubmit={this._changePassword}>
                   {requiresOldPassword &&
-                  <Input ref="old_password" name="old_password" id="old_password" type="password" maxLength={100}
+                  <Input ref={(old_password) => { this.inputs['old_password'] = old_password; }} name="old_password" id="old_password" type="password" maxLength={100}
                          labelClassName="col-sm-3" wrapperClassName="col-sm-9"
                          label="Old Password" required />
                 }
-                  <Input ref="password" name="password" id="password" type="password" maxLength={100}
+                  <Input ref={(password) => { this.inputs['password'] = password; }} name="password" id="password" type="password" maxLength={100}
                        labelClassName="col-sm-3" wrapperClassName="col-sm-9"
                        label="New Password" required minLength="6"
                        help="Passwords must be at least 6 characters long. We recommend using a strong password."
                        onChange={this._onPasswordChange} />
 
-                  <Input ref="password_repeat" name="password_repeat" id="password_repeat" type="password" maxLength={100}
+                  <Input ref={(password_repeat) => { this.inputs['password_repeat'] = password_repeat; }} name="password_repeat" id="password_repeat" type="password" maxLength={100}
                        labelClassName="col-sm-3" wrapperClassName="col-sm-9"
                        label="Repeat Password" required minLength="6" onChange={this._onPasswordChange} />
 
@@ -342,7 +354,7 @@ const UserForm = React.createClass({
           </Col>
         </Row>
         <IfPermitted permissions="users:rolesedit">
-          <EditRolesForm user={this.props.user} history={this.props.history} />
+          <EditRolesForm user={this.props.user} />
         </IfPermitted>
       </div>
     );

@@ -1,40 +1,36 @@
-import React, { PropTypes } from 'react';
+import React from 'react';
 import { DocumentTitle, PageHeader } from 'components/common';
 import { Button } from 'react-bootstrap';
 
 import LdapComponent from 'components/ldap/LdapComponent';
 import LdapGroupsComponent from 'components/ldap/LdapGroupsComponent';
 
+import history from 'util/History';
 import CombinedProvider from 'injection/CombinedProvider';
 const { LdapActions } = CombinedProvider.get('Ldap');
 
 import Routes from 'routing/Routes';
 
-const LegacyLdapConfig = React.createClass({
-  propTypes: {
-    history: PropTypes.object.isRequired,
-  },
-  getInitialState() {
-    return {
-      showSettings: true,
-    };
-  },
+class LegacyLdapConfig extends React.Component {
+  state = {
+    showSettings: true,
+  };
 
   componentDidMount() {
     LdapActions.loadSettings();
-  },
+  }
 
-  _toggleButton() {
+  _toggleButton = () => {
     this.setState({ showSettings: !this.state.showSettings });
-  },
+  };
 
-  _onSettingsCancel() {
+  _onSettingsCancel = () => {
     this._toggleButton();
-  },
+  };
 
-  _onCancel() {
-    this.props.history.pushState(null, Routes.SYSTEM.AUTHENTICATION.OVERVIEW);
-  },
+  _onCancel = () => {
+    history.push(Routes.SYSTEM.AUTHENTICATION.OVERVIEW);
+  };
 
   render() {
     const toggleButtonText = this.state.showSettings ? 'LDAP Group Mapping' : 'LDAP Settings';
@@ -59,7 +55,7 @@ const LegacyLdapConfig = React.createClass({
         </span>
       </DocumentTitle>
     );
-  },
-});
+  }
+}
 
 export default LegacyLdapConfig;

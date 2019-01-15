@@ -1,21 +1,23 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Row, Col, Button } from 'react-bootstrap';
 
 import LoaderTabs from 'components/messageloaders/LoaderTabs';
 import MessageFieldExtractorActions from 'components/search/MessageFieldExtractorActions';
 
-const AddExtractorWizard = React.createClass({
-  propTypes: {
+class AddExtractorWizard extends React.Component {
+  static propTypes = {
     inputId: PropTypes.string,
-  },
-  getInitialState() {
-    return {
-      showExtractorForm: false,
-    };
-  },
-  _showAddExtractorForm() {
+  };
+
+  state = {
+    showExtractorForm: false,
+  };
+
+  _showAddExtractorForm = () => {
     this.setState({ showExtractorForm: !this.state.showExtractorForm });
-  },
+  };
+
   render() {
     let extractorForm;
 
@@ -48,7 +50,7 @@ const AddExtractorWizard = React.createClass({
         </Col>
       </Row>
     );
-  },
-});
+  }
+}
 
 export default AddExtractorWizard;

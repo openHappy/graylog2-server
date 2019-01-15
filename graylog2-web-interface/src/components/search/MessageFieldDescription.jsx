@@ -1,59 +1,64 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Alert } from 'react-bootstrap';
 import Immutable from 'immutable';
 
 import StoreProvider from 'injection/StoreProvider';
+import ActionsProvider from 'injection/ActionsProvider';
+import { DecoratedMessageFieldMarker } from 'components/search';
+import DecorationStats from 'logic/message/DecorationStats';
+import MessageFieldSearchActions from './MessageFieldSearchActions';
+
 const SearchStore = StoreProvider.getStore('Search');
 // eslint-disable-next-line no-unused-vars
 const MessagesStore = StoreProvider.getStore('Messages');
-
-import ActionsProvider from 'injection/ActionsProvider';
 const MessagesActions = ActionsProvider.getActions('Messages');
 
-import MessageFieldSearchActions from './MessageFieldSearchActions';
 
-import { DecoratedMessageFieldMarker } from 'components/search';
-
-const MessageFieldDescription = React.createClass({
-  propTypes: {
+class MessageFieldDescription extends React.Component {
+  static propTypes = {
     message: PropTypes.object.isRequired,
     fieldName: PropTypes.string.isRequired,
     fieldValue: PropTypes.any.isRequired,
-    possiblyHighlight: PropTypes.func.isRequired,
+    renderForDisplay: PropTypes.func.isRequired,
     disableFieldActions: PropTypes.bool,
     customFieldActions: PropTypes.node,
-    isDecorated: PropTypes.bool,
-  },
-  getInitialState() {
-    return {
-      messageTerms: Immutable.List(),
-    };
-  },
-  loadTerms(field) {
+  };
+
+  state = {
+    messageTerms: Immutable.List(),
+  };
+
+  loadTerms = (field) => {
     return () => {
       const promise = MessagesActions.fieldTerms.triggerPromise(this.props.message.index, this.props.message.fields[field]);
       promise.then(terms => this._onTermsLoaded(terms));
     };
-  },
-  _onTermsLoaded(terms) {
+  };
+
+  _onTermsLoaded = (terms) => {
     this.setState({ messageTerms: Immutable.fromJS(terms) });
-  },
-  _shouldShowTerms() {
+  };
+
+  _shouldShowTerms = () => {
     return this.state.messageTerms.size !== 0;
-  },
-  addFieldToSearchBar(event) {
+  };
+
+  addFieldToSearchBar = (event) => {
     event.preventDefault();
     SearchStore.addSearchTerm(this.props.fieldName, this.props.fieldValue);
-  },
-  _getFormattedTerms() {
+  };
+
+  _getFormattedTerms = () => {
     const termsMarkup = [];
     this.state.messageTerms.forEach((term, idx) => {
       termsMarkup.push(<span key={idx} className="message-terms">{term}</span>);
     });
 
     return termsMarkup;
-  },
-  _getFormattedFieldActions() {
+  };
+
+  _getFormattedFieldActions = () => {
     if (this.props.disableFieldActions) {
       return null;
     }
@@ -71,23 +76,26 @@ const MessageFieldDescription = React.createClass({
     }
 
     return fieldActions;
-  },
+  };
+
   render() {
-    const className = this.props.fieldName === 'message' || this.props.fieldName === 'full_message' ? 'message-field' : '';
+    const fieldName = this.props.fieldName;
+    const className = fieldName === 'message' || fieldName === 'full_message' ? 'message-field' : '';
+    const isDecorated = DecorationStats.isFieldDecorated(this.props.message, fieldName);
 
     return (
-      <dd className={className} key={`${this.props.fieldName}dd`}>
+      <dd className={className} key={`${fieldName}dd`}>
         {this._getFormattedFieldActions()}
-        <div className="field-value">{this.props.possiblyHighlight(this.props.fieldName)}</div>
+        <div className="field-value">{this.props.renderForDisplay(this.props.fieldName)}</div>
         {this._shouldShowTerms() &&
         <Alert bsStyle="info" onDismiss={() => this.setState({ messageTerms: Immutable.Map() })}>
           Field terms: &nbsp;{this._getFormattedTerms()}
         </Alert>
         }
-        {this.props.isDecorated && <DecoratedMessageFieldMarker />}
+        {isDecorated && <DecoratedMessageFieldMarker />}
       </dd>
     );
-  },
-});
+  }
+}
 
 export default MessageFieldDescription;

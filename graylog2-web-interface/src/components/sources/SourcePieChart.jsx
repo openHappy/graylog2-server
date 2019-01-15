@@ -1,47 +1,48 @@
 import $ from 'jquery';
 import dc from 'dc';
 import numeral from 'numeral';
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 
 import SourceTitle from './SourceTitle';
 import D3Utils from 'util/D3Utils';
 
-const SourcePieChart = React.createClass({
-  propTypes: {
+class SourcePieChart extends React.Component {
+  static propTypes = {
     resetFilters: PropTypes.func.isRequired,
     numberOfTopValues: PropTypes.number.isRequired,
-  },
+  };
 
-  getFilters() {
+  getFilters = () => {
     return this._pieChart ? this._pieChart.filters() : [];
-  },
+  };
 
-  setFilter(filter) {
+  setFilter = (filter) => {
     this._pieChart.filter(filter);
-  },
+  };
 
-  clearFilters() {
+  clearFilters = () => {
     this._pieChart.filterAll();
-  },
+  };
 
-  redraw() {
+  redraw = () => {
     this._pieChart.redraw();
-  },
+  };
 
-  _configureWidth(pieChartWidth) {
+  _configureWidth = (pieChartWidth) => {
     this._pieChart.width(pieChartWidth)
       .height(pieChartWidth)
       .radius(pieChartWidth / 2 - 10)
       .innerRadius(pieChartWidth / 5);
-  },
+  };
 
-  updateWidth() {
+  updateWidth = () => {
     const $pieChartDomNode = $('#dc-sources-pie-chart').parent();
     const pieChartWidth = $pieChartDomNode.width();
     this._configureWidth(pieChartWidth);
-  },
+  };
 
-  renderPieChart(dimension, group, onDataFiltered) {
+  renderPieChart = (dimension, group, onDataFiltered) => {
     const pieChartDomNode = $('#dc-sources-pie-chart')[0];
     const pieChartWidth = $(pieChartDomNode).width();
     this._pieChart = dc.pieChart(pieChartDomNode);
@@ -60,15 +61,15 @@ const SourcePieChart = React.createClass({
         });
       });
     this._configureWidth(pieChartWidth);
-  },
+  };
 
   render() {
     return (
-      <div id="dc-sources-pie-chart" ref="sourcePieChart">
+      <div id="dc-sources-pie-chart">
         <SourceTitle className="reset" resetFilters={this.props.resetFilters}>Messages per source</SourceTitle>
       </div>
     );
-  },
-});
+  }
+}
 
 export default SourcePieChart;

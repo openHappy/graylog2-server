@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import ReactDOM from 'react-dom';
 import Immutable from 'immutable';
 import numeral from 'numeral';
@@ -12,59 +13,77 @@ import HistogramFormatter from 'logic/graphs/HistogramFormatter';
 
 import graphHelper from 'legacy/graphHelper';
 
-const StackedGraphVisualization = React.createClass({
-  propTypes: {
+import style from './StackedGraphVisualization.css';
+
+class StackedGraphVisualization extends React.Component {
+  static propTypes = {
     id: PropTypes.string.isRequired,
     data: PropTypes.array.isRequired,
     height: PropTypes.number,
     width: PropTypes.number,
     config: PropTypes.object.isRequired,
     computationTimeRange: PropTypes.object,
-  },
-  getInitialState() {
+    interactive: PropTypes.bool,
+    onRenderComplete: PropTypes.func,
+  };
+
+  static defaultProps = {
+    interactive: true,
+    onRenderComplete: () => {},
+  };
+
+  constructor(props) {
+    super(props);
     this.series = Immutable.List();
     this.seriesNames = Immutable.Map();
     this.barWidthScale = d3.scale.linear().domain(d3.range(0, 10000)).range(d3.range(0.6, 0, -0.01));
     this.dataPoints = Immutable.Set();
 
-    return {};
-  },
+    this.state = {};
+  }
+
   componentDidMount() {
-    this.renderGraph();
-    this.dataPoints = this._formatData(this.props.data);
+    this.renderGraph(this.props);
+    this.dataPoints = this._formatData(this.props);
     this.drawData();
-  },
+  }
+
   componentWillReceiveProps(nextProps) {
     if (deepEqual(this.props, nextProps)) {
       return;
     }
 
+    this._updateSeriesNames(nextProps);
+    this.dataPoints = this._formatData(nextProps);
     if (nextProps.height !== this.props.height || nextProps.width !== this.props.width) {
       this._resizeVisualization(nextProps.width, nextProps.height);
+      this.renderGraph(nextProps);
     }
-    this._updateSeriesNames();
-    this.dataPoints = this._formatData(nextProps.data);
     this.drawData();
-  },
-  _normalizeData(data) {
+  }
+
+  _normalizeData = (data) => {
     if (data === null || data === undefined || !Array.isArray(data)) {
       return [];
     }
     return data;
-  },
-  _formatData(data) {
+  };
+
+  _formatData = (props) => {
+    const data = props.data;
     const normalizedData = this._normalizeData(data);
-    const isSearchAll = (this.props.config.timerange.type === 'relative' && this.props.config.timerange.range === 0);
+    const isSearchAll = (props.config.timerange.type === 'relative' && props.config.timerange.range === 0);
     const formattedSeries = [];
 
     normalizedData.forEach((aSeries, idx) => {
-      formattedSeries.push(HistogramFormatter.format(aSeries, this.props.computationTimeRange,
-        this.props.config.interval, this.props.width, isSearchAll, this.props.config.series[idx].statistical_function));
+      formattedSeries.push(HistogramFormatter.format(aSeries, props.computationTimeRange,
+        props.config.interval, props.width, isSearchAll, props.config.series[idx].statistical_function));
     }, this);
 
     return this._mergeSeries(formattedSeries);
-  },
-  _mergeSeries(series) {
+  };
+
+  _mergeSeries = (series) => {
     let mergedSeries = Immutable.Map();
 
     series.forEach((aSeries, idx) => {
@@ -80,8 +99,9 @@ const StackedGraphVisualization = React.createClass({
     }, this);
 
     return mergedSeries.toOrderedSet().sortBy(dataPoint => dataPoint.get('timestamp'));
-  },
-  _getGraphType() {
+  };
+
+  _getGraphType = () => {
     let graphType;
 
     switch (this.props.config.renderer) {
@@ -99,8 +119,10 @@ const StackedGraphVisualization = React.createClass({
     }
 
     return graphType;
-  },
-  _applyGraphConfiguration(graphType) {
+  };
+
+  _applyGraphConfiguration = (graphType) => {
+    /* eslint-disable no-case-declarations */
     switch (graphType) {
       case 'bar':
         // Automatically resize bar width
@@ -118,11 +140,14 @@ const StackedGraphVisualization = React.createClass({
       default:
         console.warn(`Invalid graph type ${graphType}`);
     }
-  },
-  _formatTooltipTitle(x) {
+    /* eslint-enable no-case-declarations */
+  };
+
+  _formatTooltipTitle = (x) => {
     return new DateTime(x).toString(DateTime.Formats.COMPLETE);
-  },
-  _formatTooltipValue(value) {
+  };
+
+  _formatTooltipValue = (value) => {
     let formattedValue;
     try {
       formattedValue = numeral(value).format('0,0.[00]');
@@ -131,36 +156,42 @@ const StackedGraphVisualization = React.createClass({
     }
 
     return formattedValue;
-  },
-  _resizeVisualization(width, height) {
+  };
+
+  _resizeVisualization = (width, height) => {
     this.graph.resize({
       width: width,
       height: height,
     });
-  },
-  _updateSeriesNames() {
+  };
+
+  _updateSeriesNames = (props) => {
     let i = 0;
     let newSeriesNames = Immutable.Map();
-    this.props.config.series.forEach((seriesConfig) => {
+    props.config.series.forEach((seriesConfig) => {
       i++;
       const seriesName = `series${i}`;
-      newSeriesNames = newSeriesNames.set(seriesName, `${seriesConfig.statistical_function} ${seriesConfig.field}, "${seriesConfig.query}"`);
+      const seriesTitle = seriesConfig.title ? seriesConfig.title : `${seriesConfig.statistical_function} ${seriesConfig.field}, "${seriesConfig.query || '*'}"`;
+      newSeriesNames = newSeriesNames.set(seriesName, seriesTitle);
     }, this);
 
     if (!Immutable.is(this.seriesNames, newSeriesNames)) {
       this.seriesNames = newSeriesNames;
       this.graph.data.names(this.seriesNames.toJS());
     }
-  },
-  drawData() {
+  };
+
+  drawData = () => {
     const graphType = this._getGraphType();
     this._applyGraphConfiguration(graphType);
 
-    // Generate custom tick values for the time axis
-    this.graph.internal.config.axis_x_tick_values = graphHelper.customTickInterval()(
-      this.dataPoints.first().get('timestamp') - 1000,
-      this.dataPoints.last().get('timestamp') + 1000,
-    );
+    if (!this.dataPoints.isEmpty()) {
+      // Generate custom tick values for the time axis
+      this.graph.internal.config.axis_x_tick_values = graphHelper.customTickInterval()(
+        this.dataPoints.first().get('timestamp') - 1000,
+        this.dataPoints.last().get('timestamp') + 1000,
+      );
+    }
 
     this.graph.load({
       json: this.dataPoints.toJS(),
@@ -170,19 +201,21 @@ const StackedGraphVisualization = React.createClass({
       },
       type: graphType,
     });
-  },
-  renderGraph() {
-    const graphDomNode = ReactDOM.findDOMNode(this);
+  };
+
+  renderGraph = (props) => {
+    const graphDomNode = this._graph;
     const colourPalette = D3Utils.glColourPalette();
 
     let i = 0;
     let colours = Immutable.Map();
 
-    this.props.config.series.forEach((seriesConfig) => {
+    props.config.series.forEach((seriesConfig) => {
       i++;
       const seriesName = `series${i}`;
+      const seriesTitle = seriesConfig.title ? seriesConfig.title : `${seriesConfig.statistical_function} ${seriesConfig.field}, "${seriesConfig.query || '*'}"`;
       this.series = this.series.push(seriesName);
-      this.seriesNames = this.seriesNames.set(seriesName, `${seriesConfig.statistical_function} ${seriesConfig.field}, "${seriesConfig.query}"`);
+      this.seriesNames = this.seriesNames.set(seriesName, seriesTitle);
       colours = colours.set(seriesName, colourPalette(seriesName));
     });
 
@@ -190,11 +223,12 @@ const StackedGraphVisualization = React.createClass({
       return Math.abs(value) > 1e+30 || value === 0 ? value.toPrecision(1) : d3.format('.2s')(value);
     };
 
-    this.graph = c3.generate({
+    const config = {
       bindto: graphDomNode,
+      onrendered: this.props.onRenderComplete,
       size: {
-        height: this.props.height,
-        width: this.props.width,
+        height: props.height,
+        width: props.width,
       },
       data: {
         columns: [],
@@ -244,13 +278,23 @@ const StackedGraphVisualization = React.createClass({
           value: this._formatTooltipValue,
         },
       },
-    });
-  },
+    };
+
+    if (!this.props.interactive) {
+      config.interaction = { enabled: false };
+      config.transition = { duration: null };
+    }
+
+    this.graph = c3.generate(config);
+  };
+
   render() {
+    const classNames = this.props.config.doNotShowCircles ? 'donotshowcircles' : '';
     return (
-      <div id={`visualization-${this.props.id}`} className={`graph ${this.props.config.renderer}`} />
+      <div ref={(c) => { this._graph = c; }} id={`visualization-${this.props.id}`}
+           className={`graph ${this.props.config.renderer}${classNames}`} />
     );
-  },
-});
+  }
+}
 
 export default StackedGraphVisualization;

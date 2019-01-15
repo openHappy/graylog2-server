@@ -1,41 +1,68 @@
-import React, { PropTypes } from 'react';
-import ReactDOM from 'react-dom';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Button, Tooltip, OverlayTrigger } from 'react-bootstrap';
-import Clipboard from 'clipboard';
+import ClipboardJS from 'clipboard';
 
-const ClipboardButton = React.createClass({
-  propTypes: {
+/**
+ * Component that renders a button to copy some text in the clipboard when pressed.
+ * The text to be copied can be given in the `text` prop, or in an external element through a CSS selector in the `target` prop.
+ */
+class ClipboardButton extends React.Component {
+  static propTypes = {
+    /** Text or element used in the button. */
     title: PropTypes.oneOfType([PropTypes.node, PropTypes.string]).isRequired,
+    /** Action to perform. */
     action: PropTypes.oneOf(['copy', 'cut']),
-    text: PropTypes.string, // text to copy to clipboard
-    target: PropTypes.string, // css selector for the target element
+    /** Text to be copied in the clipboard. This overrides the `target` prop. */
+    text: PropTypes.string,
+    /** CSS selector to an element containing the text to be copied to the clipboard. This will only be used if `text` is not provided. */
+    target: PropTypes.string,
+    /** Function to call if text was successfully copied to clipboard. */
     onSuccess: PropTypes.func,
+    /** Button's class name. */
     className: PropTypes.string,
+    /** Button's style. */
     style: PropTypes.object,
+    /** Button's bsStyle. */
     bsStyle: PropTypes.string,
+    /** Button's bsSize. */
     bsSize: PropTypes.string,
-  },
-  getDefaultProps() {
-    return {
-      action: 'copy',
-    };
-  },
-  getInitialState() {
-    return {
-      tooltipMessage: '',
-    };
-  },
+    /** Specifies if the button is disabled or not. */
+    disabled: PropTypes.bool,
+    /** Text to display when hovering over the button. */
+    buttonTitle: PropTypes.string,
+    /** Container element which is focussed */
+    container: PropTypes.any,
+  };
+
+  static defaultProps = {
+    action: 'copy',
+    disabled: false,
+    buttonTitle: undefined,
+    container: undefined,
+  };
+
+  state = {
+    tooltipMessage: '',
+  };
+
   componentDidMount() {
-    this.clipboard = new Clipboard('[data-clipboard-button]');
+    const options = {};
+    if (this.props.container) {
+      options.container = this.props.container;
+    }
+    this.clipboard = new ClipboardJS('[data-clipboard-button]', options);
     this.clipboard.on('success', this._onSuccess);
     this.clipboard.on('error', this._onError);
-  },
+  }
+
   componentWillUnmount() {
     if (this.clipboard) {
       this.clipboard.destroy();
     }
-  },
-  _onSuccess(event) {
+  }
+
+  _onSuccess = (event) => {
     this.setState({ tooltipMessage: 'Copied!' });
 
     if (this.props.onSuccess) {
@@ -43,20 +70,25 @@ const ClipboardButton = React.createClass({
     }
 
     event.clearSelection();
-  },
-  _onError(event) {
+  };
+
+  _onError = (event) => {
     const key = event.action === 'cut' ? 'K' : 'C';
-    this.setState({ tooltipMessage: `Press Ctrl+${key} to ${event.action}` });
-  },
-  _getFilteredProps() {
-    const { className, style, bsStyle, bsSize } = this.props;
+    this.setState({ tooltipMessage: <span>Press Ctrl+{key}&thinsp;/&thinsp;&#8984;{key} to {event.action}</span> });
+  };
+
+  _getFilteredProps = () => {
+    const { className, style, bsStyle, bsSize, disabled, buttonTitle } = this.props;
     return {
       className: className,
       style: style,
       bsStyle: bsStyle,
       bsSize: bsSize,
+      disabled: disabled,
+      title: buttonTitle,
     };
-  },
+  };
+
   render() {
     const filteredProps = this._getFilteredProps();
     const tooltip = <Tooltip id={'copy-button-tooltip'}>{this.state.tooltipMessage}</Tooltip>;
@@ -74,7 +106,7 @@ const ClipboardButton = React.createClass({
         </Button>
       </OverlayTrigger>
     );
-  },
-});
+  }
+}
 
 export default ClipboardButton;

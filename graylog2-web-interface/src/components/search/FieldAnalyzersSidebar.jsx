@@ -1,61 +1,61 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { Input } from 'components/bootstrap';
 
 import { DecoratedSidebarMessageField, SidebarMessageField } from 'components/search';
 
-const FieldAnalyzersSidebar = React.createClass({
-  propTypes: {
-    fields: React.PropTypes.array,
-    fieldAnalyzers: React.PropTypes.array,
-    onFieldAnalyzer: React.PropTypes.func,
-    onFieldToggled: React.PropTypes.func,
-    maximumHeight: React.PropTypes.number,
-    predefinedFieldSelection: React.PropTypes.func,
-    result: React.PropTypes.object,
-    selectedFields: React.PropTypes.object,
-    shouldHighlight: React.PropTypes.bool,
-    showAllFields: React.PropTypes.bool,
-    showHighlightToggle: React.PropTypes.bool,
-    togglePageFields: React.PropTypes.func,
-    toggleShouldHighlight: React.PropTypes.func,
-  },
+class FieldAnalyzersSidebar extends React.Component {
+  static propTypes = {
+    fields: PropTypes.array,
+    fieldAnalyzers: PropTypes.array,
+    onFieldAnalyzer: PropTypes.func,
+    onFieldToggled: PropTypes.func,
+    maximumHeight: PropTypes.number,
+    predefinedFieldSelection: PropTypes.func,
+    result: PropTypes.object,
+    searchConfig: PropTypes.object.isRequired,
+    selectedFields: PropTypes.object,
+    shouldHighlight: PropTypes.bool,
+    showAllFields: PropTypes.bool,
+    showHighlightToggle: PropTypes.bool,
+    togglePageFields: PropTypes.func,
+    toggleShouldHighlight: PropTypes.func,
+  };
 
-  getInitialState() {
-    return {
-      fieldFilter: '',
-      maxFieldsHeight: 1000,
-    };
-  },
+  state = {
+    fieldFilter: '',
+    maxFieldsHeight: 1000,
+  };
 
   componentDidMount() {
     this._updateHeight();
     window.addEventListener('scroll', this._updateHeight);
-  },
+  }
 
   componentDidUpdate(prevProps) {
     if (this.props.showAllFields !== prevProps.showAllFields || this.props.maximumHeight !== prevProps.maximumHeight) {
       this._updateHeight();
     }
-  },
+  }
 
   componentWillUnmount() {
     window.removeEventListener('scroll', this._updateHeight);
-  },
+  }
 
-  MINIMUM_FIELDS_HEIGHT: 50,
+  MINIMUM_FIELDS_HEIGHT = 50;
 
-  _updateHeight() {
-    const fieldsContainer = ReactDOM.findDOMNode(this.refs.fields);
+  _updateHeight = () => {
+    const fieldsContainer = ReactDOM.findDOMNode(this.fields);
 
-    const footer = ReactDOM.findDOMNode(this.refs.footer);
+    const footer = ReactDOM.findDOMNode(this.footer);
     const footerCss = window.getComputedStyle(footer);
     const footerMargin = parseFloat(footerCss.getPropertyValue('margin-top'));
 
     // Need to calculate this additionally, because margins are not included in the parent's height #computers
     let highlightToggleMargins = 0;
-    if (this.refs.highlightToggle) {
-      const toggle = ReactDOM.findDOMNode(this.refs.highlightToggle);
+    if (this.highlightToggle) {
+      const toggle = ReactDOM.findDOMNode(this.highlightToggle);
       const toggleCss = window.getComputedStyle(toggle);
       highlightToggleMargins = parseFloat(toggleCss.getPropertyValue('margin-top')) +
         parseFloat(toggleCss.getPropertyValue('margin-bottom'));
@@ -68,37 +68,41 @@ const FieldAnalyzersSidebar = React.createClass({
       highlightToggleMargins;
 
     this.setState({ maxFieldsHeight: Math.max(maxHeight, this.MINIMUM_FIELDS_HEIGHT) });
-  },
+  };
 
-  _filterFields(event) {
+  _filterFields = (event) => {
     this.setState({ fieldFilter: event.target.value });
-  },
+  };
 
-  _showAllFields(event) {
+  _showAllFields = (event) => {
     event.preventDefault();
     if (!this.props.showAllFields) {
       this.props.togglePageFields();
     }
-  },
-  _showPageFields(event) {
+  };
+
+  _showPageFields = (event) => {
     event.preventDefault();
     if (this.props.showAllFields) {
       this.props.togglePageFields();
     }
-  },
+  };
 
-  _updateFieldSelection(setName) {
+  _updateFieldSelection = (setName) => {
     this.props.predefinedFieldSelection(setName);
-  },
-  _updateFieldSelectionToDefault() {
+  };
+
+  _updateFieldSelectionToDefault = () => {
     this._updateFieldSelection('default');
-  },
-  _updateFieldSelectionToAll() {
+  };
+
+  _updateFieldSelectionToAll = () => {
     this._updateFieldSelection('all');
-  },
-  _updateFieldSelectionToNone() {
+  };
+
+  _updateFieldSelectionToNone = () => {
     this._updateFieldSelection('none');
-  },
+  };
 
   render() {
     const decorationStats = this.props.result.decoration_stats;
@@ -122,6 +126,7 @@ const FieldAnalyzersSidebar = React.createClass({
                                  fieldAnalyzers={this.props.fieldAnalyzers}
                                  onToggled={this.props.onFieldToggled}
                                  onFieldAnalyzer={this.props.onFieldAnalyzer}
+                                 searchConfig={this.props.searchConfig}
                                  selected={this.props.selectedFields.contains(field.name)} />
           );
         }
@@ -131,15 +136,20 @@ const FieldAnalyzersSidebar = React.createClass({
     let shouldHighlightToggle;
     if (this.props.showHighlightToggle) {
       shouldHighlightToggle = (
-        <Input ref="highlightToggle" type="checkbox" bsSize="small" checked={this.props.shouldHighlight}
-               onChange={this.props.toggleShouldHighlight} label="Highlight results"
-               groupClassName="result-highlight-control" />
+        <Input ref={(highlightToggle) => { this.highlightToggle = highlightToggle; }}
+               id="highligh-results-checkbox"
+               type="checkbox"
+               bsSize="small"
+               checked={this.props.shouldHighlight}
+               onChange={this.props.toggleShouldHighlight}
+               label="Highlight results"
+               wrapperClassName="result-highlight-control" />
       );
     }
 
     return (
       <div>
-        <div ref="fieldsFilter" className="input-group input-group-sm" style={{ marginTop: 5, marginBottom: 5 }}>
+        <div className="input-group input-group-sm" style={{ marginTop: 5, marginBottom: 5 }}>
           <span className="input-group-btn">
             <button type="button" className="btn btn-default"
                     onClick={this._updateFieldSelectionToDefault}>Default
@@ -155,12 +165,12 @@ const FieldAnalyzersSidebar = React.createClass({
                  onChange={this._filterFields}
                  value={this.state.fieldFilter} />
         </div>
-        <div ref="fields" style={{ maxHeight: this.state.maxFieldsHeight, overflowY: 'scroll' }}>
+        <div ref={(fields) => { this.fields = fields; }} style={{ maxHeight: this.state.maxFieldsHeight, overflowY: 'scroll' }}>
           <ul className="search-result-fields">
             {messageFields}
           </ul>
         </div>
-        <div ref="footer" style={{ marginTop: 13, marginBottom: 0 }}>
+        <div ref={(footer) => { this.footer = footer; }} style={{ marginTop: 13, marginBottom: 0 }}>
           List{' '}
           <span className="message-result-fields-range"> fields of&nbsp;
             <a href="#" style={{ fontWeight: this.props.showAllFields ? 'normal' : 'bold' }}
@@ -173,7 +183,7 @@ const FieldAnalyzersSidebar = React.createClass({
         </div>
       </div>
     );
-  },
-});
+  }
+}
 
 export default FieldAnalyzersSidebar;

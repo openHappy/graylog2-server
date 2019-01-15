@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Label } from 'react-bootstrap';
 
@@ -6,18 +7,18 @@ import DateTime from 'logic/datetimes/DateTime';
 
 import { IndexSizeSummary } from 'components/indices';
 
-const IndexSummary = React.createClass({
-  propTypes: {
-    children: React.PropTypes.node.isRequired,
-    index: React.PropTypes.object.isRequired,
-    indexRange: React.PropTypes.object,
-    isDeflector: React.PropTypes.bool.isRequired,
-    name: React.PropTypes.string.isRequired,
-  },
-  getInitialState() {
-    return { showDetails: this.props.isDeflector };
-  },
-  _formatLabels(index) {
+class IndexSummary extends React.Component {
+  static propTypes = {
+    children: PropTypes.node.isRequired,
+    index: PropTypes.object.isRequired,
+    indexRange: PropTypes.object,
+    isDeflector: PropTypes.bool.isRequired,
+    name: PropTypes.string.isRequired,
+  };
+
+  state = { showDetails: this.props.isDeflector };
+
+  _formatLabels = (index) => {
     const labels = [];
     if (index.is_deflector) {
       labels.push(<Label key={`${this.props.name}-deflector-label`} bsStyle="primary">active write index</Label>);
@@ -32,9 +33,9 @@ const IndexSummary = React.createClass({
     }
 
     return <span className="index-label">{labels}</span>;
-  },
+  };
 
-  _formatIndexRange() {
+  _formatIndexRange = () => {
     if (this.props.isDeflector) {
       return <span>Contains messages up to <Timestamp dateTime={new DateTime().toISOString()} relative /></span>;
     }
@@ -62,17 +63,20 @@ const IndexSummary = React.createClass({
         <Timestamp dateTime={this.props.indexRange.end} relative />
       </span>
     );
-  },
-  _formatShowDetailsLink() {
+  };
+
+  _formatShowDetailsLink = () => {
     if (this.state.showDetails) {
       return <span className="index-more-actions"><i className="fa fa-caret-down" /> Hide Details / Actions</span>;
     }
     return <span className="index-more-actions"><i className="fa fa-caret-right" /> Show Details / Actions</span>;
-  },
-  _toggleShowDetails(event) {
+  };
+
+  _toggleShowDetails = (event) => {
     event.preventDefault();
     this.setState({ showDetails: !this.state.showDetails });
-  },
+  };
+
   render() {
     const index = this.props.index;
     return (
@@ -95,7 +99,7 @@ const IndexSummary = React.createClass({
         </div>
       </span>
     );
-  },
-});
+  }
+}
 
 export default IndexSummary;

@@ -1,62 +1,69 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Button } from 'react-bootstrap';
 
 import { Input } from 'components/bootstrap';
 import ObjectUtils from 'util/ObjectUtils';
 
+// eslint-disable-next-line no-unused-vars
+import style from './KeyValueTable.css';
+
 /**
  * KeyValueTable displays a table for all key-value pairs in a JS object. If the editable prop is set to true, it also
  * provides inputs to create, edit and delete key-value pairs.
  */
-const KeyValueTable = React.createClass({
-  propTypes: {
-    pairs: PropTypes.object.isRequired, // Object containing key-values to represent in the table
-    headers: PropTypes.array, // Table headers. Must be an array with three elements [ key header, value header, actions header]
-    editable: PropTypes.bool, // Indicates if the user can create, edit or delete key-value pairs
-    onChange: PropTypes.func, // Callback when key-value pairs change
-    className: PropTypes.string, // Extra CSS classes for the rendered table
-    containerClassName: PropTypes.string, // Extra CSS classes for the table container
-    actionsSize: PropTypes.oneOf(['large', 'medium', 'small', 'xsmall']), // Size of action buttons
-  },
+class KeyValueTable extends React.Component {
+  static propTypes = {
+    /** Object containing key-values to represent in the table. */
+    pairs: PropTypes.object.isRequired,
+    /** Table headers. Must be an array with three elements [ key header, value header, actions header]. */
+    headers: PropTypes.array,
+    /** Indicates if the user can create, edit or delete key-value pairs. */
+    editable: PropTypes.bool,
+    /** Callback when key-value pairs change. It receives the new key-value pairs as argument. */
+    onChange: PropTypes.func,
+    /** Extra CSS classes for the rendered table. */
+    className: PropTypes.string,
+    /** Extra CSS classes for the table container. */
+    containerClassName: PropTypes.string,
+    /** Size of action buttons. */
+    actionsSize: PropTypes.oneOf(['large', 'medium', 'small', 'xsmall']),
+  };
 
-  getInitialState() {
-    return {
-      newKey: '',
-      newValue: '',
-    };
-  },
+  static defaultProps = {
+    headers: ['Name', 'Value', 'Actions'],
+    editable: false,
+    actionsSize: 'xsmall',
+    className: '',
+    containerClassName: '',
+  };
 
-  getDefaultProps() {
-    return {
-      headers: ['Name', 'Value', 'Actions'],
-      editable: false,
-      actionsSize: 'xsmall',
-      className: '',
-      containerClassName: '',
-    };
-  },
+  state = {
+    newKey: '',
+    newValue: '',
+  };
 
-  _onPairsChange(newPairs) {
+  _onPairsChange = (newPairs) => {
     if (this.props.onChange) {
       this.props.onChange(newPairs);
     }
-  },
+  };
 
-  _bindValue(event) {
+  _bindValue = (event) => {
     const newState = {};
     newState[event.target.name] = event.target.value;
     this.setState(newState);
-  },
+  };
 
-  _addRow() {
+  _addRow = () => {
     const newPairs = ObjectUtils.clone(this.props.pairs);
     newPairs[this.state.newKey] = this.state.newValue;
     this._onPairsChange(newPairs);
 
     this.setState({ newKey: '', newValue: '' });
-  },
+  };
 
-  _deleteRow(key) {
+  _deleteRow = (key) => {
     return () => {
       if (window.confirm(`Are you sure you want to delete property '${key}'?`)) {
         const newPairs = ObjectUtils.clone(this.props.pairs);
@@ -64,9 +71,9 @@ const KeyValueTable = React.createClass({
         this._onPairsChange(newPairs);
       }
     };
-  },
+  };
 
-  _formattedHeaders(headers) {
+  _formattedHeaders = (headers) => {
     return (
       <tr>
         {headers.map((header, idx) => {
@@ -85,9 +92,9 @@ const KeyValueTable = React.createClass({
         })}
       </tr>
     );
-  },
+  };
 
-  _formattedRows(pairs) {
+  _formattedRows = (pairs) => {
     return Object.keys(pairs).sort().map((key) => {
       let actionsColumn;
       if (this.props.editable) {
@@ -109,9 +116,9 @@ const KeyValueTable = React.createClass({
         </tr>
       );
     });
-  },
+  };
 
-  _newRow() {
+  _newRow = () => {
     if (!this.props.editable) {
       return null;
     }
@@ -132,11 +139,11 @@ const KeyValueTable = React.createClass({
         </td>
       </tr>
     );
-  },
+  };
 
   render() {
     return (
-      <div>
+      <div className="key-value-table-component">
         <div className={`table-responsive ${this.props.containerClassName}`}>
           <table className={`table table-striped ${this.props.className}`}>
             <thead>{this._formattedHeaders(this.props.headers)}</thead>
@@ -148,7 +155,7 @@ const KeyValueTable = React.createClass({
         </div>
       </div>
     );
-  },
-});
+  }
+}
 
 export default KeyValueTable;

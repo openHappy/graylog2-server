@@ -1,9 +1,10 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { LinkContainer } from 'react-router-bootstrap';
 import { Button, DropdownButton, MenuItem } from 'react-bootstrap';
 import URI from 'urijs';
 
-import { IfPermitted } from 'components/common';
+import { ExternalLinkButton, IfPermitted } from 'components/common';
 
 import StoreProvider from 'injection/StoreProvider';
 const SystemProcessingStore = StoreProvider.getStore('SystemProcessing');
@@ -12,12 +13,13 @@ const SystemShutdownStore = StoreProvider.getStore('SystemShutdown');
 
 import Routes from 'routing/Routes';
 
-const NodesActions = React.createClass({
-  propTypes: {
+class NodesActions extends React.Component {
+  static propTypes = {
     node: PropTypes.object.isRequired,
     systemOverview: PropTypes.object.isRequired,
-  },
-  _toggleMessageProcessing() {
+  };
+
+  _toggleMessageProcessing = () => {
     if (confirm(`You are about to ${this.props.systemOverview.is_processing ? 'pause' : 'resume'} message processing in this node. Are you sure?`)) {
       if (this.props.systemOverview.is_processing) {
         SystemProcessingStore.pause(this.props.node.node_id);
@@ -25,19 +27,22 @@ const NodesActions = React.createClass({
         SystemProcessingStore.resume(this.props.node.node_id);
       }
     }
-  },
-  _changeLBStatus(status) {
+  };
+
+  _changeLBStatus = (status) => {
     return () => {
       if (confirm(`You are about to change the load balancer status for this node to ${status}. Are you sure?`)) {
         SystemLoadBalancerStore.override(this.props.node.node_id, status);
       }
     };
-  },
-  _shutdown() {
+  };
+
+  _shutdown = () => {
     if (prompt('Do you really want to shutdown this node? Confirm by typing "SHUTDOWN".') === 'SHUTDOWN') {
       SystemShutdownStore.shutdown(this.props.node.node_id);
     }
-  },
+  };
+
   render() {
     const apiBrowserURI = new URI(`${this.props.node.transport_address}/api-browser`).normalizePathname().toString();
     return (
@@ -50,9 +55,9 @@ const NodesActions = React.createClass({
           <Button bsStyle="info">Metrics</Button>
         </LinkContainer>
 
-        <Button bsStyle="info" href={apiBrowserURI} target="_blank">
-          <i className="fa fa-external-link" />&nbsp; API browser
-        </Button>
+        <ExternalLinkButton bsStyle="info" href={apiBrowserURI}>
+          API browser
+        </ExternalLinkButton>
 
         <DropdownButton title="More actions" id={`more-actions-dropdown-${this.props.node.node_id}`} pullRight>
           <IfPermitted permissions="processing:changestate">
@@ -94,7 +99,7 @@ const NodesActions = React.createClass({
         </DropdownButton>
       </div>
     );
-  },
-});
+  }
+}
 
 export default NodesActions;

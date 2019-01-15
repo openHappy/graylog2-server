@@ -1,4 +1,5 @@
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { Row, Button, FormGroup, Alert } from 'react-bootstrap';
 import { DocumentTitle } from 'components/common';
@@ -14,7 +15,8 @@ const SessionActions = ActionsProvider.getActions('Session');
 import disconnectedStyle from '!style/useable!css!less!stylesheets/disconnected.less';
 import authStyle from '!style/useable!css!less!stylesheets/auth.less';
 
-const LoginPage = React.createClass({
+const LoginPage = createReactClass({
+  displayName: 'LoginPage',
   mixins: [Reflux.connect(SessionStore), Reflux.ListenerMethods],
 
   getInitialState() {
@@ -28,32 +30,37 @@ const LoginPage = React.createClass({
     authStyle.use();
     SessionActions.validate();
   },
+
   componentWillUnmount() {
     disconnectedStyle.unuse();
     authStyle.unuse();
+    if (this.promise) {
+      this.promise.cancel();
+    }
   },
 
   onSignInClicked(event) {
     event.preventDefault();
     this.resetLastError();
     this.setState({ loading: true });
-    const username = this.refs.username.getValue();
-    const password = this.refs.password.getValue();
+    const username = this.username.getValue();
+    const password = this.password.getValue();
     const location = document.location.host;
-    const promise = SessionActions.login.triggerPromise(username, password, location);
-    promise.catch((error) => {
+    this.promise = SessionActions.login.triggerPromise(username, password, location);
+    this.promise.catch((error) => {
       if (error.additional.status === 401) {
         this.setState({ lastError: 'Invalid credentials, please verify them and retry.' });
       } else {
         this.setState({ lastError: `Error - the server returned: ${error.additional.status} - ${error.message}` });
       }
     });
-    promise.finally(() => {
-      if (this.isMounted()) {
+    this.promise.finally(() => {
+      if (!this.promise.isCancelled()) {
         this.setState({ loading: false });
       }
     });
   },
+
   formatLastError(error) {
     if (error) {
       return (
@@ -66,9 +73,11 @@ const LoginPage = React.createClass({
     }
     return null;
   },
+
   resetLastError() {
     this.setState({ lastError: undefined });
   },
+
   render() {
     if (this.state.validatingSession) {
       return (
@@ -87,9 +96,9 @@ const LoginPage = React.createClass({
 
                 {alert}
 
-                <Input ref="username" type="text" placeholder="Username" autoFocus />
+                <Input ref={(username) => { this.username = username; }} id="username" type="text" placeholder="Username" autoFocus />
 
-                <Input ref="password" type="password" placeholder="Password" />
+                <Input ref={(password) => { this.password = password; }} id="password" type="password" placeholder="Password" />
 
                 <FormGroup>
                   <Button type="submit" bsStyle="info" disabled={this.state.loading}>

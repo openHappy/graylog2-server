@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import ReactDOM from 'react-dom';
 import { Button, DropdownButton, MenuItem, Modal, Tab, Tabs } from 'react-bootstrap';
 import { AutoAffix } from 'react-overlays';
@@ -25,25 +27,28 @@ import ApiRoutes from 'routing/ApiRoutes';
 
 import EventHandlersThrottler from 'util/EventHandlersThrottler';
 
-const SearchSidebar = React.createClass({
+const SearchSidebar = createReactClass({
+  displayName: 'SearchSidebar',
+
   propTypes: {
-    builtQuery: React.PropTypes.any,
-    currentSavedSearch: React.PropTypes.string,
-    fields: React.PropTypes.array,
-    fieldAnalyzers: React.PropTypes.array,
-    onFieldAnalyzer: React.PropTypes.func,
-    onFieldToggled: React.PropTypes.func,
-    permissions: React.PropTypes.array,
-    predefinedFieldSelection: React.PropTypes.func,
-    result: React.PropTypes.object,
-    searchInStream: React.PropTypes.object,
-    selectedFields: React.PropTypes.object,
-    shouldHighlight: React.PropTypes.bool,
-    showAllFields: React.PropTypes.bool,
-    showHighlightToggle: React.PropTypes.bool,
-    togglePageFields: React.PropTypes.func,
-    toggleShouldHighlight: React.PropTypes.func,
-    loadingSearch: React.PropTypes.bool,
+    builtQuery: PropTypes.any,
+    currentSavedSearch: PropTypes.string,
+    fields: PropTypes.array,
+    fieldAnalyzers: PropTypes.array,
+    onFieldAnalyzer: PropTypes.func,
+    onFieldToggled: PropTypes.func,
+    permissions: PropTypes.array,
+    predefinedFieldSelection: PropTypes.func,
+    result: PropTypes.object,
+    searchInStream: PropTypes.object,
+    selectedFields: PropTypes.object,
+    shouldHighlight: PropTypes.bool,
+    showAllFields: PropTypes.bool,
+    showHighlightToggle: PropTypes.bool,
+    togglePageFields: PropTypes.func,
+    toggleShouldHighlight: PropTypes.func,
+    loadingSearch: PropTypes.bool,
+    searchConfig: PropTypes.object.isRequired,
   },
 
   getInitialState() {
@@ -78,7 +83,7 @@ const SearchSidebar = React.createClass({
   _updateHeight() {
     const viewPortHeight = window.innerHeight;
 
-    const sidebar = ReactDOM.findDOMNode(this.refs.sidebar);
+    const sidebar = ReactDOM.findDOMNode(this.sidebar);
     const sidebarCss = window.getComputedStyle(ReactDOM.findDOMNode(sidebar));
     const sidebarPaddingBottom = parseFloat(sidebarCss.getPropertyValue('padding-bottom'));
 
@@ -211,7 +216,7 @@ const SearchSidebar = React.createClass({
 
     return (
       <AutoAffix affixClassName="affix">
-        <div className="content-col" ref="sidebar" style={{ top: undefined, position: undefined }}>
+        <div className="content-col" ref={(sidebar) => { this.sidebar = sidebar; }} style={{ top: undefined, position: undefined }}>
           <div>
             <h2>
               {searchTitle}
@@ -254,6 +259,7 @@ const SearchSidebar = React.createClass({
                                      maximumHeight={this.state.availableHeight}
                                      predefinedFieldSelection={this.props.predefinedFieldSelection}
                                      result={this.props.result}
+                                     searchConfig={this.props.searchConfig}
                                      selectedFields={this.props.selectedFields}
                                      shouldHighlight={this.props.shouldHighlight}
                                      showAllFields={this.props.showAllFields}

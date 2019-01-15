@@ -1,9 +1,10 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
-const CSVFileAdapterSummary = React.createClass({
-  propTypes: {
-    dataAdapter: React.PropTypes.object.isRequired,
-  },
+class CSVFileAdapterSummary extends React.Component {
+  static propTypes = {
+    dataAdapter: PropTypes.object.isRequired,
+  };
 
   render() {
     const config = this.props.dataAdapter.config;
@@ -20,9 +21,11 @@ const CSVFileAdapterSummary = React.createClass({
       <dd>{config.value_column}</dd>
       <dt>Check interval</dt>
       <dd>{config.check_interval} seconds</dd>
+      <dt>Case-insensitive lookup</dt>
+      <dd>{config.case_insensitive_lookup ? 'yes' : 'no'}</dd>
     </dl>);
-  },
-});
+  }
+}
 
 
 export default CSVFileAdapterSummary;

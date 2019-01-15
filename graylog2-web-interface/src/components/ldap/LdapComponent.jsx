@@ -1,15 +1,19 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { Row, Col, Button, Panel } from 'react-bootstrap';
 import URI from 'urijs';
 import naturalSort from 'javascript-natural-sort';
 
-import { Input } from 'components/bootstrap';
+import { Input, InputWrapper } from 'components/bootstrap';
+import { FormGroup, ControlLabel } from 'react-bootstrap';
 import { MultiSelect, Spinner } from 'components/common';
 import ObjectUtils from 'util/ObjectUtils';
 
 import TestLdapConnection from './TestLdapConnection';
 import TestLdapLogin from './TestLdapLogin';
+import LdapComponentStyle from './LdapComponent.css';
 
 import StoreProvider from 'injection/StoreProvider';
 const RolesStore = StoreProvider.getStore('Roles');
@@ -127,12 +131,13 @@ const HelperText = {
   },
 };
 
-const LdapComponent = React.createClass({
+const LdapComponent = createReactClass({
+  displayName: 'LdapComponent',
   mixins: [Reflux.listenTo(LdapStore, '_onLdapSettingsChange', '_onLdapSettingsChange')],
 
   propTypes: {
-    onCancel: React.PropTypes.func.isRequired,
-    onShowGroups: React.PropTypes.func.isRequired,
+    onCancel: PropTypes.func.isRequired,
+    onShowGroups: PropTypes.func.isRequired,
   },
 
   getInitialState() {
@@ -140,6 +145,7 @@ const LdapComponent = React.createClass({
       ldapSettings: undefined,
       ldapUri: undefined,
       roles: undefined,
+      showPasswordInput: true,
     };
   },
 
@@ -151,7 +157,6 @@ const LdapComponent = React.createClass({
 
   _formatAdditionalRoles(roles) {
     return roles
-      .filter(r => !(r.name.toLowerCase() === 'reader' || r.name.toLowerCase() === 'admin'))
       .sort((r1, r2) => naturalSort(r1.name.toLowerCase(), r2.name.toLowerCase()))
       .map((r) => {
         return { label: r.name, value: r.name };
@@ -166,7 +171,7 @@ const LdapComponent = React.createClass({
     // Clone settings object, so we don't the store reference
     const settings = ObjectUtils.clone(state.ldapSettings);
     const ldapUri = new URI(settings.ldap_uri);
-    this.setState({ ldapSettings: settings, ldapUri: ldapUri });
+    this.setState({ ldapSettings: settings, ldapUri: ldapUri, hidePasswordInput: settings.system_password_set });
   },
 
   _isLoading() {
@@ -249,6 +254,10 @@ const LdapComponent = React.createClass({
     this.props.onShowGroups();
   },
 
+  _showPasswordInput() {
+    this.setState({hidePasswordInput: false});
+  },
+
   render() {
     if (this._isLoading()) {
       return <Spinner />;
@@ -260,11 +269,33 @@ const LdapComponent = React.createClass({
 
     const rolesOptions = this.state.roles;
 
+    const ldapPasswordInput = this.state.hidePasswordInput ?
+      (<FormGroup controlId="system_password">
+        <ControlLabel className="col-sm-3">System Password</ControlLabel>
+        <InputWrapper className="col-sm-9">
+          <span className={LdapComponentStyle.passwordSet}>Password is set</span>
+          <Button onClick={this._showPasswordInput} >Reset Password</Button>
+        </InputWrapper>
+      </FormGroup>) :
+      (<Input type="password"
+             id="system_password"
+             name="system_password"
+             labelClassName="col-sm-3"
+             wrapperClassName="col-sm-9"
+             placeholder="System Password"
+             label="System Password"
+             value={this.state.ldapSettings.system_password}
+             help={help.SYSTEM_PASSWORD}
+             onChange={this._bindValue}
+             disabled={disabled} />);
+
     return (
       <Row>
         <Col lg={8}>
           <form id="ldap-settings-form" className="form-horizontal" onSubmit={this._saveSettings}>
-            <Input type="checkbox" label="Enable LDAP"
+            <Input id="enable-ldap-checkbox"
+                   type="checkbox"
+                   label="Enable LDAP"
                    help="User accounts will be taken from LDAP/Active Directory, the administrator account will still be available."
                    wrapperClassName="col-sm-offset-3 col-sm-9"
                    name="enabled"
@@ -328,10 +359,7 @@ const LdapComponent = React.createClass({
                      value={this.state.ldapSettings.system_username} help={help.SYSTEM_USERNAME}
                      onChange={this._bindValue} disabled={disabled} />
 
-              <Input type="password" id="system_password" name="system_password" labelClassName="col-sm-3"
-                     wrapperClassName="col-sm-9" placeholder="System Password" label="System Password"
-                     value={this.state.ldapSettings.system_password} help={help.SYSTEM_PASSWORD}
-                     onChange={this._bindValue} disabled={disabled} />
+              {ldapPasswordInput}
             </fieldset>
 
             <fieldset>
@@ -389,17 +417,14 @@ const LdapComponent = React.createClass({
               <Input id="default_group" labelClassName="col-sm-3"
                      wrapperClassName="col-sm-9" label="Default User Role"
                      help={help.defaultGroup(this._onShowGroups)}>
-                <Row>
-                  <Col sm={4}>
-                    <select id="default_group" name="default_group" className="form-control" required
-                            value={this.state.ldapSettings.default_group.toLowerCase()} disabled={disabled}
-                            onChange={ev => this._setSetting('default_group', ev.target.value)}>
-
-                      <option value="reader">Reader - basic access</option>
-                      <option value="admin">Administrator - complete access</option>
-                    </select>
-                  </Col>
-                </Row>
+                <MultiSelect
+                  options={rolesOptions}
+                  disabled={disabled}
+                  multi={false}
+                  value={this.state.ldapSettings.default_group}
+                  onChange={role => this._setSetting('default_group', role)}
+                  placeholder="Choose a default role"
+                />
               </Input>
 
               <Row>
@@ -415,7 +440,6 @@ const LdapComponent = React.createClass({
                      wrapperClassName="col-sm-9" label="Additional Default Roles"
                      help={help.ADDITIONAL_GROUPS}>
                 <MultiSelect
-                  ref="select"
                   options={rolesOptions}
                   disabled={disabled}
                   value={this.state.ldapSettings.additional_default_groups}

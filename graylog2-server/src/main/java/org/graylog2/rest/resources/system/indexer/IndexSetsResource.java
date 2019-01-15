@@ -34,7 +34,9 @@ import org.graylog2.indexer.IndexSetValidator;
 import org.graylog2.indexer.indexset.DefaultIndexSetConfig;
 import org.graylog2.indexer.indexset.IndexSetConfig;
 import org.graylog2.indexer.indexset.IndexSetService;
+import org.graylog2.indexer.indices.Indices;
 import org.graylog2.indexer.indices.jobs.IndexSetCleanupJob;
+import org.graylog2.indexer.indices.stats.IndexStatistics;
 import org.graylog2.plugin.cluster.ClusterConfigService;
 import org.graylog2.rest.resources.system.indexer.requests.IndexSetUpdateRequest;
 import org.graylog2.rest.resources.system.indexer.responses.IndexSetResponse;
@@ -81,6 +83,7 @@ import static java.util.Objects.requireNonNull;
 public class IndexSetsResource extends RestResource {
     private static final Logger LOG = LoggerFactory.getLogger(IndexSetsResource.class);
 
+    private final Indices indices;
     private final IndexSetService indexSetService;
     private final IndexSetRegistry indexSetRegistry;
     private final IndexSetValidator indexSetValidator;
@@ -90,13 +93,15 @@ public class IndexSetsResource extends RestResource {
     private final SystemJobManager systemJobManager;
 
     @Inject
-    public IndexSetsResource(final IndexSetService indexSetService,
+    public IndexSetsResource(final Indices indices,
+                             final IndexSetService indexSetService,
                              final IndexSetRegistry indexSetRegistry,
                              final IndexSetValidator indexSetValidator,
                              final IndexSetCleanupJob.Factory indexSetCleanupJobFactory,
                              final IndexSetStatsCreator indexSetStatsCreator,
                              final ClusterConfigService clusterConfigService,
                              final SystemJobManager systemJobManager) {
+        this.indices = requireNonNull(indices);
         this.indexSetService = requireNonNull(indexSetService);
         this.indexSetRegistry = indexSetRegistry;
         this.indexSetValidator = indexSetValidator;
@@ -154,6 +159,24 @@ public class IndexSetsResource extends RestResource {
     }
 
     @GET
+    @Path("stats")
+    @Timed
+    @ApiOperation(value = "Get stats of all index sets")
+    @ApiResponses(value = {
+            @ApiResponse(code = 403, message = "Unauthorized"),
+    })
+    public IndexSetStats globalStats() {
+        checkPermission(RestPermissions.INDEXSETS_READ);
+
+        final Set<String> indexWildcards = indexSetRegistry.getAll().stream()
+                .map(IndexSet::getIndexWildcard)
+                .collect(Collectors.toSet());
+        final Set<IndexStatistics> indicesStats = indices.getIndicesStats(indexWildcards);
+        final Set<String> closedIndices = indices.getClosedIndices(indexWildcards);
+        return IndexSetStats.fromIndexStatistics(indicesStats, closedIndices);
+    }
+
+    @GET
     @Path("{id}")
     @Timed
     @ApiOperation(value = "Get index set")
@@ -167,6 +190,22 @@ public class IndexSetsResource extends RestResource {
         final IndexSetConfig defaultIndexSet = indexSetService.getDefault();
         return indexSetService.get(id)
                 .map(config -> IndexSetSummary.fromIndexSetConfig(config, config.equals(defaultIndexSet)))
+                .orElseThrow(() -> new NotFoundException("Couldn't load index set with ID <" + id + ">"));
+    }
+
+    @GET
+    @Path("{id}/stats")
+    @Timed
+    @ApiOperation(value = "Get index set statistics")
+    @ApiResponses(value = {
+            @ApiResponse(code = 403, message = "Unauthorized"),
+            @ApiResponse(code = 404, message = "Index set not found"),
+    })
+    public IndexSetStats indexSetStatistics(@ApiParam(name = "id", required = true)
+                                            @PathParam("id") String id) {
+        checkPermission(RestPermissions.INDEXSETS_READ, id);
+        return indexSetRegistry.get(id)
+                .map(indexSetStatsCreator::getForIndexSet)
                 .orElseThrow(() -> new NotFoundException("Couldn't load index set with ID <" + id + ">"));
     }
 

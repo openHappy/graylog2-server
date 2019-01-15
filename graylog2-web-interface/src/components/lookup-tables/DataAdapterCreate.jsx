@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import naturalSort from 'javascript-natural-sort';
 
 import { Row, Col } from 'react-bootstrap';
@@ -8,30 +9,25 @@ import { DataAdapterForm } from 'components/lookup-tables';
 import { PluginStore } from 'graylog-web-plugin/plugin';
 import ObjectUtils from 'util/ObjectUtils';
 
-const DataAdapterCreate = React.createClass({
-
-  propTypes: {
+class DataAdapterCreate extends React.Component {
+  static propTypes = {
     saved: PropTypes.func.isRequired,
     types: PropTypes.object.isRequired,
     validate: PropTypes.func,
     validationErrors: PropTypes.object,
-  },
+  };
 
-  getDefaultProps() {
-    return {
-      validate: null,
-      validationErrors: {},
-    };
-  },
+  static defaultProps = {
+    validate: null,
+    validationErrors: {},
+  };
 
-  getInitialState() {
-    return {
-      dataAdapter: undefined,
-      type: undefined,
-    };
-  },
+  state = {
+    dataAdapter: undefined,
+    type: undefined,
+  };
 
-  _onTypeSelect(adapterType) {
+  _onTypeSelect = (adapterType) => {
     this.setState({
       type: adapterType,
       dataAdapter: {
@@ -42,7 +38,7 @@ const DataAdapterCreate = React.createClass({
         config: ObjectUtils.clone(this.props.types[adapterType].default_config),
       },
     });
-  },
+  };
 
   render() {
     const adapterPlugins = {};
@@ -52,6 +48,10 @@ const DataAdapterCreate = React.createClass({
 
     const sortedAdapters = Object.keys(this.props.types).map((key) => {
       const type = this.props.types[key];
+      if (adapterPlugins[type.type] === undefined) {
+        console.error(`Plugin component for data adapter type ${type.type} is missing - invalid or missing plugin?`);
+        return { value: type.type, disabled: true, label: `${type.type} - missing or invalid plugin` };
+      }
       return { value: type.type, label: adapterPlugins[type.type].displayName };
     }).sort((a, b) => naturalSort(a.label.toLowerCase(), b.label.toLowerCase()));
 
@@ -59,7 +59,8 @@ const DataAdapterCreate = React.createClass({
       <Row className="content">
         <Col lg={8}>
           <form className="form form-horizontal" onSubmit={() => {}}>
-            <Input label="Data Adapter Type"
+            <Input id="data-adapter-type-select"
+                   label="Data Adapter Type"
                    required
                    autoFocus
                    help="The type of data adapter to configure."
@@ -69,7 +70,7 @@ const DataAdapterCreate = React.createClass({
                       clearable={false}
                       options={sortedAdapters}
                       matchProp="value"
-                      onValueChange={this._onTypeSelect}
+                      onChange={this._onTypeSelect}
                       value={null} />
             </Input>
           </form>
@@ -89,8 +90,8 @@ const DataAdapterCreate = React.createClass({
         </Row>
       )}
     </div>);
-  },
-});
+  }
+}
 
 
 export default DataAdapterCreate;

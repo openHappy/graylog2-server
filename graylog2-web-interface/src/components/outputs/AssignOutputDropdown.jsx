@@ -1,27 +1,32 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Button } from 'react-bootstrap';
 
-const AssignOutputDropdown = React.createClass({
-  propTypes: {
-    outputs: React.PropTypes.array.isRequired,
-    onSubmit: React.PropTypes.func.isRequired,
-  },
-  getInitialState() {
-    return {
-      selectedOutput: this.PLACEHOLDER,
-    };
-  },
-  PLACEHOLDER: 'placeholder',
-  _formatOutput(output) {
+class AssignOutputDropdown extends React.Component {
+  static propTypes = {
+    outputs: PropTypes.array.isRequired,
+    onSubmit: PropTypes.func.isRequired,
+  };
+
+  PLACEHOLDER = 'placeholder';
+
+  _formatOutput = (output) => {
     return <option key={output.id} value={output.id}>{output.title}</option>;
-  },
-  _handleUpdate(evt) {
+  };
+
+  _handleUpdate = (evt) => {
     this.setState({ selectedOutput: evt.target.value });
-  },
-  _handleClick() {
+  };
+
+  _handleClick = () => {
     this.props.onSubmit(this.state.selectedOutput);
     this.setState({ selectedOutput: this.PLACEHOLDER });
-  },
+  };
+
+  state = {
+    selectedOutput: this.PLACEHOLDER,
+  };
+
   render() {
     const outputs = this.props.outputs;
     const outputList = (outputs.length > 0 ? outputs.map(this._formatOutput) :
@@ -35,14 +40,14 @@ const AssignOutputDropdown = React.createClass({
             {outputList}
           </select>
           &nbsp;
-          <Button ref="submitButton" id="add-existing-output" bsStyle="success" type="button"
+          <Button id="add-existing-output" bsStyle="success" type="button"
                   disabled={this.state.selectedOutput === this.PLACEHOLDER} onClick={this._handleClick}>
             Assign existing Output
           </Button>
         </div>
       </div>
     );
-  },
-});
+  }
+}
 
 export default AssignOutputDropdown;

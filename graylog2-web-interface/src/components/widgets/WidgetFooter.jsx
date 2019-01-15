@@ -1,48 +1,65 @@
+import PropTypes from 'prop-types';
 import React from 'react';
-import { Button, OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
+import { Timestamp } from 'components/common';
 
-const WidgetFooter = React.createClass({
-  propTypes: {
-    locked: React.PropTypes.bool.isRequired,
-    onDelete: React.PropTypes.func.isRequired,
-    onEditConfig: React.PropTypes.func.isRequired,
-    onShowConfig: React.PropTypes.func.isRequired,
-    replayHref: React.PropTypes.string.isRequired,
-    replayToolTip: React.PropTypes.string,
-  },
-  _showConfig(e) {
+class WidgetFooter extends React.Component {
+  static propTypes = {
+    locked: PropTypes.bool.isRequired,
+    onDelete: PropTypes.func.isRequired,
+    onEditConfig: PropTypes.func.isRequired,
+    onShowConfig: PropTypes.func.isRequired,
+    replayHref: PropTypes.string.isRequired,
+    error: PropTypes.any,
+    errorMessage: PropTypes.string,
+    calculatedAt: PropTypes.string,
+    replayDisabled: PropTypes.bool,
+  };
+
+  _showConfig = (e) => {
     e.preventDefault();
     this.props.onShowConfig();
-  },
-  _editConfig(e) {
+  };
+
+  _editConfig = (e) => {
     e.preventDefault();
     this.props.onEditConfig();
-  },
-  _delete(e) {
+  };
+
+  _delete = (e) => {
     e.preventDefault();
     this.props.onDelete();
-  },
+  };
+
   render() {
-    // if we have a tooltip, we disable the button link and instead show a tooltip on hover
-    const title = this.props.replayToolTip ? null : 'Replay search';
-    const href = this.props.replayToolTip ? null : this.props.replayHref;
-    let replay = (
-      <Button bsStyle="link" className="btn-text" title={title} href={href}>
-        <i className="fa fa-play" />
-      </Button>
-    );
-    if (this.props.replayToolTip) {
-      replay = (
-        <OverlayTrigger placement="bottom" overlay={<Tooltip id="tooltip">{this.props.replayToolTip}</Tooltip>}>
-          {replay}
-        </OverlayTrigger>
+    let loadErrorElement;
+
+    if (this.props.error) {
+      loadErrorElement = (
+        <span className="load-error" title={this.props.errorMessage}>
+          <i className="fa fa-exclamation-triangle" />
+        </span>
       );
     }
+
+    let calculatedAtTime;
+
+    if (this.props.calculatedAt) {
+      calculatedAtTime = <span title={this.props.calculatedAt}><Timestamp dateTime={this.props.calculatedAt} relative /></span>;
+    } else {
+      calculatedAtTime = 'Loading...';
+    }
+
+    const replay = this.props.replayDisabled ? null : (
+      <div className="widget-replay">
+        <Button bsStyle="link" className="btn-text" title="Replay search" href={this.props.replayHref}>
+          <i className="fa fa-play" />
+        </Button>
+      </div>
+    );
     const lockedActions = (
       <div className="actions">
-        <div className="widget-replay">
-          {replay}
-        </div>
+        {replay}
         <div className="widget-info">
           <Button bsStyle="link" className="btn-text" title="Show widget configuration" onClick={this._showConfig}>
             <i className="fa fa-info-circle" />
@@ -68,10 +85,16 @@ const WidgetFooter = React.createClass({
 
     return (
       <div>
-        {this.props.locked ? lockedActions : unlockedActions}
+        <div className="widget-update-info">
+          {loadErrorElement}
+          {calculatedAtTime}
+        </div>
+        <div>
+          {this.props.locked ? lockedActions : unlockedActions}
+        </div>
       </div>
     );
-  },
-});
+  }
+}
 
 export default WidgetFooter;

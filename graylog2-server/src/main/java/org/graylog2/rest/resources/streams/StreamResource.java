@@ -18,7 +18,9 @@ package org.graylog2.rest.resources.streams;
 
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -37,7 +39,6 @@ import org.graylog2.audit.AuditEventTypes;
 import org.graylog2.audit.jersey.AuditEvent;
 import org.graylog2.audit.jersey.NoAuditEvent;
 import org.graylog2.database.NotFoundException;
-import org.graylog2.events.ClusterEventBus;
 import org.graylog2.indexer.IndexSet;
 import org.graylog2.indexer.IndexSetRegistry;
 import org.graylog2.plugin.Message;
@@ -45,6 +46,7 @@ import org.graylog2.plugin.Tools;
 import org.graylog2.plugin.alarms.AlertCondition;
 import org.graylog2.plugin.configuration.ConfigurationException;
 import org.graylog2.plugin.database.ValidationException;
+import org.graylog2.plugin.database.users.User;
 import org.graylog2.plugin.streams.Output;
 import org.graylog2.plugin.streams.Stream;
 import org.graylog2.plugin.streams.StreamRule;
@@ -59,7 +61,6 @@ import org.graylog2.rest.resources.streams.requests.CreateStreamRequest;
 import org.graylog2.rest.resources.streams.responses.StreamListResponse;
 import org.graylog2.rest.resources.streams.responses.StreamResponse;
 import org.graylog2.rest.resources.streams.responses.TestMatchResponse;
-import org.graylog2.rest.resources.streams.rules.requests.CreateStreamRuleRequest;
 import org.graylog2.shared.rest.resources.RestResource;
 import org.graylog2.shared.security.RestPermissions;
 import org.graylog2.streams.StreamImpl;
@@ -67,9 +68,6 @@ import org.graylog2.streams.StreamRouterEngine;
 import org.graylog2.streams.StreamRuleImpl;
 import org.graylog2.streams.StreamRuleService;
 import org.graylog2.streams.StreamService;
-import org.graylog2.streams.events.StreamDeletedEvent;
-import org.graylog2.streams.events.StreamsChangedEvent;
-import org.hibernate.validator.constraints.NotEmpty;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.ISODateTimeFormat;
@@ -78,6 +76,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.validation.Valid;
+import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
@@ -99,6 +98,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -117,7 +117,6 @@ public class StreamResource extends RestResource {
     private final IndexSetRegistry indexSetRegistry;
     private final AlarmCallbackConfigurationService alarmCallbackConfigurationService;
     private final AlertService alertService;
-    private final ClusterEventBus clusterEventBus;
 
     @Inject
     public StreamResource(StreamService streamService,
@@ -125,15 +124,13 @@ public class StreamResource extends RestResource {
                           StreamRouterEngine.Factory streamRouterEngineFactory,
                           IndexSetRegistry indexSetRegistry,
                           AlarmCallbackConfigurationService alarmCallbackConfigurationService,
-                          AlertService alertService,
-                          ClusterEventBus clusterEventBus) {
+                          AlertService alertService) {
         this.streamService = streamService;
         this.streamRuleService = streamRuleService;
         this.streamRouterEngineFactory = streamRouterEngineFactory;
         this.indexSetRegistry = indexSetRegistry;
         this.alarmCallbackConfigurationService = alarmCallbackConfigurationService;
         this.alertService = alertService;
-        this.clusterEventBus = clusterEventBus;
     }
 
     @POST
@@ -152,15 +149,12 @@ public class StreamResource extends RestResource {
             throw new BadRequestException("Assigned index set must be writable!");
         }
 
-        final String id = streamService.save(stream);
+        final Set<StreamRule> streamRules = cr.rules().stream()
+                .map(streamRule -> streamRuleService.create(null, streamRule))
+                .collect(Collectors.toSet());
+        final String id = streamService.saveWithRules(stream, streamRules);
 
-        final List<CreateStreamRuleRequest> rules = firstNonNull(cr.rules(), Collections.<CreateStreamRuleRequest>emptyList());
-        for (CreateStreamRuleRequest request : rules) {
-            StreamRule streamRule = streamRuleService.create(id, request);
-            streamRuleService.save(streamRule);
-        }
-
-        clusterEventBus.post(StreamsChangedEvent.create(stream.getId()));
+        ensureUserHasPermissionsForStream(getCurrentUser(), id);
 
         final Map<String, String> result = ImmutableMap.of("stream_id", id);
         final URI streamUri = getUriBuilderToSelf().path(StreamResource.class)
@@ -168,6 +162,31 @@ public class StreamResource extends RestResource {
             .build(id);
 
         return Response.created(streamUri).entity(result).build();
+    }
+
+    private boolean ensureUserHasPermissionsForStream(User user, String id) throws ValidationException {
+        boolean permissionsChanged = false;
+        final ImmutableList.Builder<String> permissionsBuilder = ImmutableList.<String>builder()
+                .addAll(user.getPermissions());
+        if (!isPermitted(RestPermissions.STREAMS_READ, id)) {
+            permissionsChanged = true;
+            permissionsBuilder.add(RestPermissions.STREAMS_READ + ":" + id);
+        }
+        if (!isPermitted(RestPermissions.STREAMS_EDIT, id)) {
+            permissionsChanged = true;
+            permissionsBuilder.add(RestPermissions.STREAMS_EDIT + ":" + id);
+        }
+        if (!isPermitted(RestPermissions.STREAMS_CHANGESTATE, id)) {
+            permissionsChanged = true;
+            permissionsBuilder.add(RestPermissions.STREAMS_CHANGESTATE + ":" + id);
+        }
+
+        if (permissionsChanged) {
+            user.setPermissions(permissionsBuilder.build());
+            userService.save(user);
+        }
+
+        return permissionsChanged;
     }
 
     @GET
@@ -276,7 +295,6 @@ public class StreamResource extends RestResource {
         }
 
         streamService.save(stream);
-        clusterEventBus.post(StreamsChangedEvent.create(stream.getId()));
 
         return streamToResponse(stream);
     }
@@ -296,8 +314,6 @@ public class StreamResource extends RestResource {
 
         final Stream stream = streamService.load(streamId);
         streamService.destroy(stream);
-        clusterEventBus.post(StreamsChangedEvent.create(stream.getId()));
-        clusterEventBus.post(StreamDeletedEvent.create(stream.getId()));
     }
 
     @POST
@@ -316,7 +332,6 @@ public class StreamResource extends RestResource {
 
         final Stream stream = streamService.load(streamId);
         streamService.pause(stream);
-        clusterEventBus.post(StreamsChangedEvent.create(stream.getId()));
     }
 
     @POST
@@ -335,7 +350,6 @@ public class StreamResource extends RestResource {
 
         final Stream stream = streamService.load(streamId);
         streamService.resume(stream);
-        clusterEventBus.post(StreamsChangedEvent.create(stream.getId()));
     }
 
     @POST
@@ -399,22 +413,8 @@ public class StreamResource extends RestResource {
         final Stream sourceStream = streamService.load(streamId);
         final String creatorUser = getCurrentUser().getName();
 
-        // Create stream.
-        final Map<String, Object> streamData = Maps.newHashMap();
-        streamData.put(StreamImpl.FIELD_TITLE, cr.title());
-        streamData.put(StreamImpl.FIELD_DESCRIPTION, cr.description());
-        streamData.put(StreamImpl.FIELD_CREATOR_USER_ID, creatorUser);
-        streamData.put(StreamImpl.FIELD_CREATED_AT, Tools.nowUTC());
-        streamData.put(StreamImpl.FIELD_MATCHING_TYPE, sourceStream.getMatchingType().toString());
-        streamData.put(StreamImpl.FIELD_REMOVE_MATCHES_FROM_DEFAULT_STREAM, cr.removeMatchesFromDefaultStream());
-        streamData.put(StreamImpl.FIELD_INDEX_SET_ID, cr.indexSetId());
-
-        final Stream stream = streamService.create(streamData);
-        streamService.pause(stream);
-
-        final String id = streamService.save(stream);
-
         final List<StreamRule> sourceStreamRules = streamRuleService.loadForStream(sourceStream);
+        final ImmutableSet.Builder<StreamRule> newStreamRules = ImmutableSet.builderWithExpectedSize(sourceStreamRules.size());
         for (StreamRule streamRule : sourceStreamRules) {
             final Map<String, Object> streamRuleData = Maps.newHashMapWithExpectedSize(6);
 
@@ -422,12 +422,25 @@ public class StreamResource extends RestResource {
             streamRuleData.put(StreamRuleImpl.FIELD_FIELD, streamRule.getField());
             streamRuleData.put(StreamRuleImpl.FIELD_VALUE, streamRule.getValue());
             streamRuleData.put(StreamRuleImpl.FIELD_INVERTED, streamRule.getInverted());
-            streamRuleData.put(StreamRuleImpl.FIELD_STREAM_ID, new ObjectId(id));
             streamRuleData.put(StreamRuleImpl.FIELD_DESCRIPTION, streamRule.getDescription());
 
             final StreamRule newStreamRule = streamRuleService.create(streamRuleData);
-            streamRuleService.save(newStreamRule);
+            newStreamRules.add(newStreamRule);
         }
+
+        final Map<String, Object> streamData = Maps.newHashMap();
+        streamData.put(StreamImpl.FIELD_TITLE, cr.title());
+        streamData.put(StreamImpl.FIELD_DESCRIPTION, cr.description());
+        streamData.put(StreamImpl.FIELD_CREATOR_USER_ID, creatorUser);
+        streamData.put(StreamImpl.FIELD_CREATED_AT, Tools.nowUTC());
+        streamData.put(StreamImpl.FIELD_MATCHING_TYPE, sourceStream.getMatchingType().toString());
+        streamData.put(StreamImpl.FIELD_REMOVE_MATCHES_FROM_DEFAULT_STREAM, cr.removeMatchesFromDefaultStream());
+        streamData.put(StreamImpl.FIELD_DISABLED, true);
+        streamData.put(StreamImpl.FIELD_INDEX_SET_ID, cr.indexSetId());
+
+        final Stream stream = streamService.create(streamData);
+        final String savedStreamId = streamService.saveWithRules(stream, newStreamRules.build());
+        final ObjectId savedStreamObjectId = new ObjectId(savedStreamId);
 
         for (AlertCondition alertCondition : streamService.getAlertConditions(sourceStream)) {
             try {
@@ -448,16 +461,18 @@ public class StreamResource extends RestResource {
             alarmCallbackConfigurationService.save(alarmCallback);
         }
 
-        for (Output output : sourceStream.getOutputs()) {
-            streamService.addOutput(stream, output);
-        }
+        final Set<ObjectId> outputIds = sourceStream.getOutputs().stream()
+                .map(Output::getId)
+                .map(ObjectId::new)
+                .collect(Collectors.toSet());
+        streamService.addOutputs(savedStreamObjectId, outputIds);
 
-        clusterEventBus.post(StreamsChangedEvent.create(stream.getId()));
+        ensureUserHasPermissionsForStream(getCurrentUser(), savedStreamId);
 
-        final Map<String, String> result = ImmutableMap.of("stream_id", id);
+        final Map<String, String> result = ImmutableMap.of("stream_id", savedStreamId);
         final URI streamUri = getUriBuilderToSelf().path(StreamResource.class)
             .path("{streamId}")
-            .build(id);
+            .build(savedStreamId);
 
         return Response.created(streamUri).entity(result).build();
     }

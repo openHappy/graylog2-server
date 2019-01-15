@@ -1,7 +1,9 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { ButtonGroup, Button, Row, Col, DropdownButton, MenuItem, Label } from 'react-bootstrap';
 import Immutable from 'immutable';
 import { LinkContainer } from 'react-router-bootstrap';
+import { Link } from 'react-router';
 
 import StoreProvider from 'injection/StoreProvider';
 const StreamsStore = StoreProvider.getStore('Streams');
@@ -13,8 +15,8 @@ import SurroundingSearchButton from 'components/search/SurroundingSearchButton';
 
 import Routes from 'routing/Routes';
 
-const MessageDetail = React.createClass({
-  propTypes: {
+class MessageDetail extends React.Component {
+  static propTypes = {
     allStreams: PropTypes.object,
     allStreamsLoaded: PropTypes.bool,
     disableTestAgainstStream: PropTypes.bool,
@@ -22,7 +24,7 @@ const MessageDetail = React.createClass({
     expandAllRenderAsync: PropTypes.bool,
     showTimestamp: PropTypes.bool,
     disableFieldActions: PropTypes.bool,
-    possiblyHighlight: PropTypes.func,
+    renderForDisplay: PropTypes.func,
     inputs: PropTypes.object,
     nodes: PropTypes.object,
     message: PropTypes.object,
@@ -30,15 +32,14 @@ const MessageDetail = React.createClass({
     customFieldActions: PropTypes.node,
     searchConfig: PropTypes.object,
     disableMessageActions: PropTypes.bool,
-  },
+  };
 
-  getInitialState() {
-    return {
-      allStreamsLoaded: false,
-      allStreams: Immutable.List(),
-      showOriginal: false,
-    };
-  },
+  state = {
+    allStreamsLoaded: false,
+    allStreams: Immutable.List(),
+    showOriginal: false,
+  };
+
   componentDidMount() {
     if (this.props.allStreams === undefined) {
       // our parent does not provide allStreams for the test against stream menu, we have to load it ourselves
@@ -50,16 +51,18 @@ const MessageDetail = React.createClass({
       const promise = StreamsStore.listStreams();
       promise.done(streams => this._onStreamsLoaded(streams));
     }
-  },
-  _onStreamsLoaded(streams) {
-    this.setState({ allStreamsLoaded: true, allStreams: Immutable.List(streams).sortBy(stream => stream.title) });
-  },
+  }
 
-  _inputName(inputId) {
+  _onStreamsLoaded = (streams) => {
+    this.setState({ allStreamsLoaded: true, allStreams: Immutable.List(streams).sortBy(stream => stream.title) });
+  };
+
+  _inputName = (inputId) => {
     const input = this.props.inputs.get(inputId);
     return input ? <span style={{ wordBreak: 'break-word' }}>{input.title}</span> : 'deleted input';
-  },
-  _nodeName(nodeId) {
+  };
+
+  _nodeName = (nodeId) => {
     const node = this.props.nodes.get(nodeId);
     let nodeInformation;
 
@@ -77,16 +80,16 @@ const MessageDetail = React.createClass({
       nodeInformation = <span style={{ wordBreak: 'break-word' }}>stopped node</span>;
     }
     return nodeInformation;
-  },
+  };
 
-  _getAllStreams() {
+  _getAllStreams = () => {
     if (this.props.allStreams) {
       return this.props.allStreams;
     }
     return this.state.allStreams;
-  },
+  };
 
-  _getTestAgainstStreamButton() {
+  _getTestAgainstStreamButton = () => {
     if (this.props.disableTestAgainstStream) {
       return null;
     }
@@ -112,7 +115,7 @@ const MessageDetail = React.createClass({
     });
 
     return (
-      <DropdownButton ref="streamDropdown" pullRight bsSize="small" title="Test against stream"
+      <DropdownButton pullRight bsSize="small" title="Test against stream"
                       id="select-stream-dropdown">
         { streamList }
         { (!streamList && !this.props.allStreamsLoaded) && <MenuItem header><i className="fa fa-spin fa-spinner" />
@@ -120,9 +123,9 @@ const MessageDetail = React.createClass({
         { (!streamList && this.props.allStreamsLoaded) && <MenuItem header>No streams available</MenuItem> }
       </DropdownButton>
     );
-  },
+  };
 
-  _formatMessageActions() {
+  _formatMessageActions = () => {
     if (this.props.disableMessageActions) {
       return <ButtonGroup className="pull-right" bsSize="small" />;
     }
@@ -154,11 +157,11 @@ const MessageDetail = React.createClass({
         {this._getTestAgainstStreamButton()}
       </ButtonGroup>
     );
-  },
+  };
 
-  _toggleShowOriginal() {
+  _toggleShowOriginal = () => {
     this.setState({ showOriginal: !this.state.showOriginal });
-  },
+  };
 
   render() {
     // Short circuit when all messages are being expanded at the same time
@@ -221,9 +224,9 @@ const MessageDetail = React.createClass({
     let messageTitle;
     if (this.props.message.index) {
       messageTitle = (
-        <LinkContainer to={Routes.message_show(this.props.message.index, this.props.message.id)}>
-          <a href="#">{this.props.message.id}</a>
-        </LinkContainer>
+        <Link to={Routes.message_show(this.props.message.index, this.props.message.id)}>
+          {this.props.message.id}
+        </Link>
       );
     } else {
       messageTitle = <span>{this.props.message.id} <Label bsStyle="warning">Not stored</Label></span>;
@@ -260,9 +263,9 @@ const MessageDetail = React.createClass({
           </dl>
         </Col>
         <Col md={9}>
-          <div ref="messageList">
+          <div>
             <MessageFields message={this.props.message}
-                           possiblyHighlight={this.props.possiblyHighlight}
+                           renderForDisplay={this.props.renderForDisplay}
                            disableFieldActions={this.props.disableFieldActions}
                            customFieldActions={this.props.customFieldActions}
                            showDecoration={this.state.showOriginal}
@@ -271,7 +274,7 @@ const MessageDetail = React.createClass({
         </Col>
       </Row>
     </div>);
-  },
-});
+  }
+}
 
 export default MessageDetail;

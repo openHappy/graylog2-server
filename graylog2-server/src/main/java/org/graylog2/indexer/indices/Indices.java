@@ -16,7 +16,6 @@
  */
 package org.graylog2.indexer.indices;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -65,8 +64,8 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.filter.FilterAggregationBuilder;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.FieldSortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
-import org.elasticsearch.search.sort.SortParseElement;
 import org.graylog2.audit.AuditActor;
 import org.graylog2.audit.AuditEventSender;
 import org.graylog2.indexer.ElasticsearchException;
@@ -82,6 +81,7 @@ import org.graylog2.indexer.indices.events.IndicesReopenedEvent;
 import org.graylog2.indexer.indices.stats.IndexStatistics;
 import org.graylog2.indexer.messages.Messages;
 import org.graylog2.indexer.searches.IndexRangeStats;
+import org.graylog2.jackson.TypeReferences;
 import org.graylog2.plugin.Message;
 import org.graylog2.plugin.system.NodeId;
 import org.joda.time.DateTime;
@@ -105,6 +105,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static java.util.stream.Collectors.toList;
 import static org.elasticsearch.search.builder.SearchSourceBuilder.searchSource;
@@ -141,7 +142,7 @@ public class Indices {
         final String query = SearchSourceBuilder.searchSource()
                 .query(QueryBuilders.matchAllQuery())
                 .size(350)
-                .sort(SortBuilders.fieldSort(SortParseElement.DOC_FIELD_NAME))
+                .sort(SortBuilders.fieldSort(FieldSortBuilder.DOC_FIELD_NAME))
                 .toString();
 
         final Search request = new Search.Builder(query)
@@ -156,8 +157,6 @@ public class Indices {
             throw new ElasticsearchException("Couldn't find scroll ID in search query response");
         }
 
-        final TypeReference<Map<String, Object>> type = new TypeReference<Map<String, Object>>() {
-        };
         while (true) {
             final SearchScroll scrollRequest = new SearchScroll.Builder(scrollId, "1m").build();
             final JestResult scrollResult = JestUtils.execute(jestClient, scrollRequest, () -> "Couldn't process result of scroll query");
@@ -171,14 +170,12 @@ public class Indices {
             final Bulk.Builder bulkRequestBuilder = new Bulk.Builder();
             for (JsonNode jsonElement : scrollHits) {
                 final Map<String, Object> doc = Optional.ofNullable(jsonElement.path("_source"))
-                        .map(sourceJson -> objectMapper.<Map<String, Object>>convertValue(sourceJson, type))
+                        .map(sourceJson -> objectMapper.<Map<String, Object>>convertValue(sourceJson, TypeReferences.MAP_STRING_OBJECT))
                         .orElse(Collections.emptyMap());
                 final String id = (String) doc.remove("_id");
 
                 bulkRequestBuilder.addAction(messages.prepareIndexRequest(target, doc, id));
             }
-
-            bulkRequestBuilder.setParameter(Parameters.CONSISTENCY, "one");
 
             final BulkResult bulkResult = JestUtils.execute(jestClient, bulkRequestBuilder.build(), () -> "Couldn't bulk index messages into index " + target);
 
@@ -299,11 +296,19 @@ public class Indices {
         }
     }
 
+    /**
+     * Returns index names and their aliases. This only returns indices which actually have an alias.
+     */
     @NotNull
     public Map<String, Set<String>> getIndexNamesAndAliases(String indexPattern) {
         // only request indices matching the name or pattern in `indexPattern` and only get the alias names for each index,
         // not the settings or mappings
-        final GetAliases request = new GetAliases.Builder().addIndex(indexPattern).build();
+        final GetAliases request = new GetAliases.Builder()
+                .addIndex(indexPattern)
+                // ES 6 changed the "expand_wildcards" default value for the /_alias API from "open" to "all".
+                // Since our code expects only open indices to be returned, we have to explicitly set the parameter now.
+                .setParameter("expand_wildcards", "open")
+                .build();
 
         final JestResult jestResult = JestUtils.execute(jestClient, request, () -> "Couldn't collect aliases for index pattern " + indexPattern);
 
@@ -311,10 +316,11 @@ public class Indices {
         final Iterator<Map.Entry<String, JsonNode>> it = jestResult.getJsonObject().fields();
         while (it.hasNext()) {
             final Map.Entry<String, JsonNode> entry = it.next();
-            final JsonNode aliasMetaData = entry.getValue();
+            final String indexName = entry.getKey();
+            final JsonNode aliasMetaData = entry.getValue().path("aliases");
             if (aliasMetaData.isObject()) {
-                final ImmutableSet<String> aliasesBuilder = ImmutableSet.copyOf(aliasMetaData.fieldNames());
-                indexAliasesBuilder.put(entry.getKey(), aliasesBuilder);
+                final ImmutableSet<String> aliasNames = ImmutableSet.copyOf(aliasMetaData.fieldNames());
+                indexAliasesBuilder.put(indexName, aliasNames);
             }
         }
 
@@ -322,6 +328,9 @@ public class Indices {
     }
 
     public Optional<String> aliasTarget(String alias) throws TooManyAliasesException {
+        // TODO: This is basically getting all indices and later we filter out the alias we want to check for.
+        //       This can be done in a more efficient way by either using the /_cat/aliases/<alias-name> API or
+        //       the regular /_alias/<alias-name> API.
         final GetAliases request = new GetAliases.Builder().build();
         final JestResult jestResult = JestUtils.execute(jestClient, request, () -> "Couldn't collect indices for alias " + alias);
 
@@ -348,7 +357,7 @@ public class Indices {
         return indices.stream().findFirst();
     }
 
-    private void ensureIndexTemplate(IndexSet indexSet) {
+    public void ensureIndexTemplate(IndexSet indexSet) {
         final IndexSetConfig indexSetConfig = indexSet.getConfig();
         final String templateName = indexSetConfig.indexTemplateName();
         final IndexMapping indexMapping = indexMappingFactory.createIndexMapping();
@@ -361,6 +370,19 @@ public class Indices {
         if (jestResult.isSucceeded()) {
             LOG.info("Successfully created index template {}", templateName);
         }
+    }
+
+    /**
+     * Returns the generated Elasticsearch index template for the given index set.
+     *
+     * @param indexSet the index set
+     * @return the generated index template
+     */
+    public Map<String, Object> getIndexTemplate(IndexSet indexSet) {
+        final String indexWildcard = indexSet.getIndexWildcard();
+        final String analyzer = indexSet.getConfig().indexAnalyzer();
+
+        return indexMappingFactory.createIndexMapping().messageTemplate(indexWildcard, analyzer);
     }
 
     public void deleteIndexTemplate(IndexSet indexSet) {
@@ -515,6 +537,31 @@ public class Indices {
         return getClosedIndices(Collections.singleton(indexSet.getIndexWildcard()));
     }
 
+    /**
+     * Retrieves all indices in the given {@link IndexSet}.
+     * <p>
+     * If any status filter parameter are present, only indices with the given status are returned.
+     *
+     * @param indexSet the index set
+     * @param statusFilter only indices with the given status are returned. (available: "open", "close")
+     * @return the set of indices in the given index set
+     */
+    public Set<String> getIndices(final IndexSet indexSet, final String... statusFilter) {
+        final List<String> status = Arrays.asList(statusFilter);
+        final Cat catRequest = new Cat.IndicesBuilder()
+                .addIndex(indexSet.getIndexWildcard())
+                .setParameter("h", "index,status")
+                .build();
+
+        final CatResult result = JestUtils.execute(jestClient, catRequest,
+                () -> "Couldn't get index list for index set <" + indexSet.getConfig().id() + ">");
+
+        return StreamSupport.stream(result.getJsonObject().path("result").spliterator(), false)
+                .filter(cat -> status.isEmpty() || status.contains(cat.path("status").asText()))
+                .map(cat -> cat.path("index").asText())
+                .collect(Collectors.toSet());
+    }
+
     public boolean isClosed(final String indexName) {
         return getClosedIndices(Collections.singleton(indexName)).contains(indexName);
     }
@@ -571,7 +618,7 @@ public class Indices {
                 .path("primaries")
                 .path("store")
                 .path("size_in_bytes");
-        return Optional.of(sizeInBytes).filter(JsonNode::isLong).map(JsonNode::asLong);
+        return Optional.of(sizeInBytes).filter(JsonNode::isNumber).map(JsonNode::asLong);
     }
 
     public Set<IndexStatistics> getIndicesStats(final IndexSet indexSet) {
@@ -666,8 +713,7 @@ public class Indices {
      * @see org.elasticsearch.search.aggregations.metrics.stats.Stats
      */
     public IndexRangeStats indexRangeStatsOfIndex(String index) {
-        final FilterAggregationBuilder builder = AggregationBuilders.filter("agg")
-                .filter(QueryBuilders.existsQuery(Message.FIELD_TIMESTAMP))
+        final FilterAggregationBuilder builder = AggregationBuilders.filter("agg", QueryBuilders.existsQuery(Message.FIELD_TIMESTAMP))
                 .subAggregation(AggregationBuilders.min("ts_min").field(Message.FIELD_TIMESTAMP))
                 .subAggregation(AggregationBuilders.max("ts_max").field(Message.FIELD_TIMESTAMP))
                 .subAggregation(AggregationBuilders.terms("streams").field(Message.FIELD_STREAMS));

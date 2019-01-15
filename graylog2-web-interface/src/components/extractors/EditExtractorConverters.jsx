@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Row, Col, Button, Panel } from 'react-bootstrap';
 import { Input } from 'components/bootstrap';
 import { Select } from 'components/common';
@@ -21,28 +22,30 @@ import {
 
 import ExtractorUtils from 'util/ExtractorUtils';
 
-const EditExtractorConverters = React.createClass({
-  propTypes: {
+class EditExtractorConverters extends React.Component {
+  static propTypes = {
     extractorType: PropTypes.string.isRequired,
     converters: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
-  },
-  getInitialState() {
-    return {
-      displayedConverters: this.props.converters.map(converter => converter.type),
-      disabledConverters: {}, // Keep disabled converters configuration, so the user doesn't need to type it again
-      selectedConverter: undefined,
-    };
-  },
-  _onConverterSelect(newValue) {
+  };
+
+  state = {
+    displayedConverters: this.props.converters.map(converter => converter.type),
+    disabledConverters: {}, // Keep disabled converters configuration, so the user doesn't need to type it again
+    selectedConverter: undefined,
+  };
+
+  _onConverterSelect = (newValue) => {
     this.setState({ selectedConverter: newValue });
-  },
-  _onConverterAdd() {
+  };
+
+  _onConverterAdd = () => {
     const newDisplayedConverters = this.state.displayedConverters;
     newDisplayedConverters.push(this.state.selectedConverter);
     this.setState({ selectedConverter: undefined, converters: newDisplayedConverters });
-  },
-  _onConverterChange(converterType, converter) {
+  };
+
+  _onConverterChange = (converterType, converter) => {
     if (converter) {
       const newDisabledConverters = this.state.disabledConverters;
       if (newDisabledConverters.hasOwnProperty(converterType)) {
@@ -56,8 +59,9 @@ const EditExtractorConverters = React.createClass({
     }
 
     this.props.onChange(converterType, converter);
-  },
-  _getConverterOptions() {
+  };
+
+  _getConverterOptions = () => {
     const converterOptions = [];
     Object.keys(ExtractorUtils.ConverterTypes).forEach((converterType) => {
       const type = ExtractorUtils.ConverterTypes[converterType];
@@ -70,12 +74,14 @@ const EditExtractorConverters = React.createClass({
     });
 
     return converterOptions;
-  },
-  _getConverterByType(converterType) {
+  };
+
+  _getConverterByType = (converterType) => {
     const currentConverter = this.props.converters.filter(converter => converter.type === converterType)[0];
     return (currentConverter ? currentConverter.config : {});
-  },
-  _getConvertersConfiguration() {
+  };
+
+  _getConvertersConfiguration = () => {
     const controls = this.state.displayedConverters.map((converterType) => {
       // Get converter configuration from disabledConverters if it was disabled
       let converterConfig = this._getConverterByType(converterType);
@@ -181,7 +187,8 @@ const EditExtractorConverters = React.createClass({
     });
 
     return controls;
-  },
+  };
+
   render() {
     if (this.props.extractorType === ExtractorUtils.ExtractorTypes.GROK || this.props.extractorType === ExtractorUtils.ExtractorTypes.JSON) {
       return (
@@ -205,8 +212,7 @@ const EditExtractorConverters = React.createClass({
                help="Add converters to transform the extracted value.">
           <Row className="row-sm">
             <Col md={11}>
-              <Select ref="addConverter"
-                      id="add-converter"
+              <Select id="add-converter"
                       placeholder="Select a converter"
                       options={this._getConverterOptions()}
                       value={this.state.selectedConverter}
@@ -223,7 +229,7 @@ const EditExtractorConverters = React.createClass({
         {this._getConvertersConfiguration()}
       </div>
     );
-  },
-});
+  }
+}
 
 export default EditExtractorConverters;

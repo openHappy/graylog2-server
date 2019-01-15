@@ -1,6 +1,7 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Row, Col } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
+import { Link } from 'react-router';
 
 import { Input } from 'components/bootstrap';
 import { Select, Spinner } from 'components/common';
@@ -11,18 +12,16 @@ import CombinedProvider from 'injection/CombinedProvider';
 
 const { LookupTablesActions } = CombinedProvider.get('LookupTables');
 
-const LookupTableConverterConfiguration = React.createClass({
-  propTypes: {
+class LookupTableConverterConfiguration extends React.Component {
+  static propTypes = {
     type: PropTypes.string.isRequired,
     configuration: PropTypes.object.isRequired,
     onChange: PropTypes.func.isRequired,
-  },
+  };
 
-  getInitialState() {
-    return {
-      lookupTables: undefined,
-    };
-  },
+  state = {
+    lookupTables: undefined,
+  };
 
   componentDidMount() {
     this.props.onChange(this.props.type, this._getConverterObject());
@@ -31,34 +30,34 @@ const LookupTableConverterConfiguration = React.createClass({
     LookupTablesActions.searchPaginated(1, 10000, null).then((result) => {
       this.setState({ lookupTables: result.lookup_tables });
     });
-  },
+  }
 
-  _getConverterObject(configuration) {
+  _getConverterObject = (configuration) => {
     return { type: this.props.type, config: configuration || this.props.configuration };
-  },
+  };
 
-  _toggleConverter(event) {
+  _toggleConverter = (event) => {
     let converter;
     if (FormUtils.getValueFromInput(event.target) === true) {
       converter = this._getConverterObject();
     }
 
     this.props.onChange(this.props.type, converter);
-  },
+  };
 
-  _updateConfigValue(key, value) {
+  _updateConfigValue = (key, value) => {
     const newConfig = this.props.configuration;
     newConfig[key] = value;
     this.props.onChange(this.props.type, this._getConverterObject(newConfig));
-  },
+  };
 
-  _onChange(key) {
+  _onChange = (key) => {
     return event => this._updateConfigValue(key, FormUtils.getValueFromInput(event.target));
-  },
+  };
 
-  _onSelect(key) {
+  _onSelect = (key) => {
     return value => this._updateConfigValue(key, value);
-  },
+  };
 
   render() {
     if (!this.state.lookupTables) {
@@ -71,14 +70,14 @@ const LookupTableConverterConfiguration = React.createClass({
 
     const helpMessage = (
       <span>
-        Lookup tables can be created <LinkContainer to={Routes.SYSTEM.LOOKUPTABLES.OVERVIEW}><a>here</a></LinkContainer>.
+        Lookup tables can be created <Link to={Routes.SYSTEM.LOOKUPTABLES.OVERVIEW}>here</Link>.
       </span>
     );
 
     return (
       <div className="xtrc-converter">
         <Input type="checkbox"
-               ref="converterEnabled"
+               ref={(converterEnabled) => { this.converterEnabled = converterEnabled; }}
                id={`enable-${this.props.type}-converter`}
                label="Convert value by using lookup table"
                wrapperClassName="col-md-offset-2 col-md-10"
@@ -92,13 +91,13 @@ const LookupTableConverterConfiguration = React.createClass({
                      label="Lookup Table"
                      labelClassName="col-md-3"
                      wrapperClassName="col-md-9"
-                     required={this.refs.converterEnabled && this.refs.converterEnabled.getChecked()}
+                     required={this.converterEnabled && this.converterEnabled.getChecked()}
                      help={helpMessage}>
                 <Select placeholder="Select a lookup table"
                         clearable={false}
                         options={lookupTables}
                         matchProp="value"
-                        onValueChange={this._onSelect('lookup_table_name')}
+                        onChange={this._onSelect('lookup_table_name')}
                         value={this.props.configuration.lookup_table_name} />
               </Input>
             </div>
@@ -106,7 +105,7 @@ const LookupTableConverterConfiguration = React.createClass({
         </Row>
       </div>
     );
-  },
-});
+  }
+}
 
 export default LookupTableConverterConfiguration;

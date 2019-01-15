@@ -1,19 +1,19 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
 const style = require('!style!css!./ChangedMessageField.css');
 
-const ChangedMessageField = React.createClass({
-  propTypes: {
-    fieldName: React.PropTypes.string.isRequired,
-    originalValue: React.PropTypes.string,
-    newValue: React.PropTypes.string,
-  },
-  getDefaultProps() {
-    return {
-      originalField: undefined,
-      newField: undefined,
-    };
-  },
+class ChangedMessageField extends React.Component {
+  static propTypes = {
+    fieldName: PropTypes.string.isRequired,
+    originalValue: PropTypes.string,
+    newValue: PropTypes.string,
+  };
+
+  static defaultProps = {
+    originalField: undefined,
+    newField: undefined,
+  };
 
   render() {
     return (
@@ -25,7 +25,7 @@ const ChangedMessageField = React.createClass({
         </dd>
       </span>
     );
-  },
-});
+  }
+}
 
 export default ChangedMessageField;

@@ -1,16 +1,19 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Alert } from 'react-bootstrap';
 
-import { DataTable, Spinner } from 'components/common';
+import { DataTable, ExternalLink, Spinner } from 'components/common';
 
-const PluginsDataTable = React.createClass({
-  propTypes: {
+class PluginsDataTable extends React.Component {
+  static propTypes = {
     plugins: PropTypes.array,
-  },
-  _headerCellFormatter(header) {
+  };
+
+  _headerCellFormatter = (header) => {
     return <th>{header}</th>;
-  },
-  _pluginInfoFormatter(plugin) {
+  };
+
+  _pluginInfoFormatter = (plugin) => {
     return (
       <tr key={plugin.name}>
         <td className="limited">{plugin.name}</td>
@@ -18,12 +21,13 @@ const PluginsDataTable = React.createClass({
         <td className="limited">{plugin.author}</td>
         <td className="limited" style={{ width: '50%' }}>
           {plugin.description}
-          &nbsp;
-          <a href={plugin.url} target="_blank" style={{ marginLeft: 10 }}><i className="fa fa-external-link" /> Website</a>
+          &nbsp;&nbsp;
+          <ExternalLink href={plugin.url} style={{ marginLeft: 10 }}>Website</ExternalLink>
         </td>
       </tr>
     );
-  },
+  };
+
   render() {
     if (!this.props.plugins) {
       return <Spinner text="Loading plugins on this node..." />;
@@ -47,7 +51,7 @@ const PluginsDataTable = React.createClass({
                  filterLabel="Filter"
                  filterKeys={[]} />
     );
-  },
-});
+  }
+}
 
 export default PluginsDataTable;

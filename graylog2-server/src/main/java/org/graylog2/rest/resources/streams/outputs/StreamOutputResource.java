@@ -17,19 +17,18 @@
 package org.graylog2.rest.resources.streams.outputs;
 
 import com.codahale.metrics.annotation.Timed;
+import com.google.common.collect.ImmutableSet;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import org.apache.shiro.authz.annotation.RequiresAuthentication;
-import org.apache.shiro.authz.annotation.RequiresPermissions;
+import org.bson.types.ObjectId;
 import org.graylog2.audit.AuditEventTypes;
 import org.graylog2.audit.jersey.AuditEvent;
 import org.graylog2.database.NotFoundException;
-import org.graylog2.events.ClusterEventBus;
 import org.graylog2.outputs.OutputRegistry;
-import org.graylog2.plugin.database.ValidationException;
 import org.graylog2.plugin.streams.Output;
 import org.graylog2.plugin.streams.Stream;
 import org.graylog2.rest.models.streams.outputs.OutputListResponse;
@@ -39,7 +38,6 @@ import org.graylog2.shared.rest.resources.RestResource;
 import org.graylog2.shared.security.RestPermissions;
 import org.graylog2.streams.OutputService;
 import org.graylog2.streams.StreamService;
-import org.graylog2.streams.events.StreamsChangedEvent;
 import org.joda.time.DateTime;
 
 import javax.inject.Inject;
@@ -65,29 +63,25 @@ public class StreamOutputResource extends RestResource {
     private final OutputService outputService;
     private final StreamService streamService;
     private final OutputRegistry outputRegistry;
-    private final ClusterEventBus clusterEventBus;
 
     @Inject
     public StreamOutputResource(OutputService outputService,
                                 StreamService streamService,
-                                OutputRegistry outputRegistry,
-                                ClusterEventBus clusterEventBus) {
+                                OutputRegistry outputRegistry) {
         this.outputService = outputService;
         this.streamService = streamService;
         this.outputRegistry = outputRegistry;
-        this.clusterEventBus = clusterEventBus;
     }
 
     @GET
     @Timed
     @ApiOperation(value = "Get a list of all outputs for a stream")
-    @RequiresPermissions(RestPermissions.STREAM_OUTPUTS_CREATE)
     @Produces(MediaType.APPLICATION_JSON)
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "No such stream on this node.")
     })
     public OutputListResponse get(@ApiParam(name = "streamid", value = "The id of the stream whose outputs we want.", required = true)
-                                   @PathParam("streamid") String streamid) throws NotFoundException {
+                                  @PathParam("streamid") String streamid) throws NotFoundException {
         checkPermission(RestPermissions.STREAMS_READ, streamid);
         checkPermission(RestPermissions.STREAM_OUTPUTS_READ);
 
@@ -112,17 +106,16 @@ public class StreamOutputResource extends RestResource {
     @Path("/{outputId}")
     @Timed
     @ApiOperation(value = "Get specific output of a stream")
-    @RequiresPermissions(RestPermissions.STREAM_OUTPUTS_READ)
     @Produces(MediaType.APPLICATION_JSON)
     @ApiResponses(value = {
             @ApiResponse(code = 404, message = "No such stream/output on this node.")
     })
     public OutputSummary get(@ApiParam(name = "streamid", value = "The id of the stream whose outputs we want.", required = true) @PathParam("streamid") String streamid,
-                      @ApiParam(name = "outputId", value = "The id of the output we want.", required = true) @PathParam("outputId") String outputId) throws NotFoundException {
+                             @ApiParam(name = "outputId", value = "The id of the output we want.", required = true) @PathParam("outputId") String outputId) throws NotFoundException {
         checkPermission(RestPermissions.STREAMS_READ, streamid);
         checkPermission(RestPermissions.STREAM_OUTPUTS_READ, outputId);
 
-        final Output output =  outputService.load(outputId);
+        final Output output = outputService.load(outputId);
 
         return OutputSummary.create(
                 output.getId(), output.getTitle(), output.getType(), output.getCreatorUserId(), new DateTime(output.getCreatedAt()), output.getConfiguration(), output.getContentPack()
@@ -134,7 +127,6 @@ public class StreamOutputResource extends RestResource {
     @ApiOperation(value = "Associate outputs with a stream")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @RequiresPermissions(RestPermissions.STREAM_OUTPUTS_CREATE)
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "Invalid output specification in input.")
     })
@@ -142,13 +134,23 @@ public class StreamOutputResource extends RestResource {
     public Response add(@ApiParam(name = "streamid", value = "The id of the stream whose outputs we want.", required = true)
                         @PathParam("streamid") String streamid,
                         @ApiParam(name = "JSON body", required = true)
-                        @Valid @NotNull AddOutputRequest aor) throws ValidationException, NotFoundException {
-        final Stream stream = streamService.load(streamid);
-        for (String outputId : aor.outputs()) {
-            final Output output = outputService.load(outputId);
-            streamService.addOutput(stream, output);
-            clusterEventBus.post(StreamsChangedEvent.create(stream.getId()));
+                        @Valid @NotNull AddOutputRequest aor) throws NotFoundException {
+        checkPermission(RestPermissions.STREAMS_EDIT, streamid);
+        checkPermission(RestPermissions.STREAM_OUTPUTS_CREATE);
+
+        // Check if stream exists
+        streamService.load(streamid);
+
+        final Set<String> outputs = aor.outputs();
+        final ImmutableSet.Builder<ObjectId> outputIds = ImmutableSet.builderWithExpectedSize(outputs.size());
+        for (String outputId : outputs) {
+            // Check if output exists
+            outputService.load(outputId);
+
+            outputIds.add(new ObjectId(outputId));
         }
+
+        streamService.addOutputs(new ObjectId(streamid), outputIds.build());
 
         return Response.accepted().build();
     }
@@ -156,7 +158,6 @@ public class StreamOutputResource extends RestResource {
     @DELETE
     @Path("/{outputId}")
     @Timed
-    @RequiresPermissions(RestPermissions.STREAM_OUTPUTS_DELETE)
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "Delete output of a stream")
     @ApiResponses(value = {
@@ -167,11 +168,13 @@ public class StreamOutputResource extends RestResource {
                        @PathParam("streamid") String streamid,
                        @ApiParam(name = "outputId", value = "The id of the output that should be deleted", required = true)
                        @PathParam("outputId") String outputId) throws NotFoundException {
+        checkPermission(RestPermissions.STREAMS_EDIT, streamid);
+        checkPermission(RestPermissions.STREAM_OUTPUTS_DELETE, outputId);
+
         final Stream stream = streamService.load(streamid);
         final Output output = outputService.load(outputId);
 
         streamService.removeOutput(stream, output);
         outputRegistry.removeOutput(output);
-        clusterEventBus.post(StreamsChangedEvent.create(stream.getId()));
     }
 }

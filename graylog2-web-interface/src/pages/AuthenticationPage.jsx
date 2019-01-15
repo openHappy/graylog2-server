@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import { Row, Col } from 'react-bootstrap';
 
 import DocsHelper from 'util/DocsHelper';
@@ -11,13 +13,13 @@ import DocumentationLink from 'components/support/DocumentationLink';
 
 import AuthenticationComponent from 'components/authentication/AuthenticationComponent';
 
-const AuthenticationPage = React.createClass({
+const AuthenticationPage = createReactClass({
+  displayName: 'AuthenticationPage',
 
   propTypes: {
-    children: React.PropTypes.object,
-    location: React.PropTypes.object.isRequired,
-    params: React.PropTypes.object.isRequired,
-    history: React.PropTypes.object.isRequired,
+    children: PropTypes.object,
+    location: PropTypes.object.isRequired,
+    params: PropTypes.object.isRequired,
   },
 
   mixins: [PermissionsMixin],
@@ -33,7 +35,7 @@ const AuthenticationPage = React.createClass({
 
         <Row className="content">
           <Col md={12}>
-            <AuthenticationComponent location={this.props.location} params={this.props.params} history={this.props.history}>
+            <AuthenticationComponent location={this.props.location} params={this.props.params}>
               {this.props.children}
             </AuthenticationComponent>
           </Col>

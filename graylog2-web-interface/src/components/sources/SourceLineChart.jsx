@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import $ from 'jquery';
 import {} from 'jquery-ui/ui/effects/effect-bounce';
@@ -10,44 +11,42 @@ import D3Utils from 'util/D3Utils';
 
 import graphHelper from 'legacy/graphHelper';
 
-const SourceLineChart = React.createClass({
-  propTypes: {
-    histogramDataAvailable: React.PropTypes.bool.isRequired,
-    reloadingHistogram: React.PropTypes.bool.isRequired,
-    resetFilters: React.PropTypes.func.isRequired,
-    resolution: React.PropTypes.string.isRequired,
-  },
+class SourceLineChart extends React.Component {
+  static propTypes = {
+    histogramDataAvailable: PropTypes.bool.isRequired,
+    reloadingHistogram: PropTypes.bool.isRequired,
+    resetFilters: PropTypes.func.isRequired,
+    resolution: PropTypes.string.isRequired,
+  };
 
-  getInitialState() {
-    return {
-      lineChartWidth: '100%',
-    };
-  },
+  state = {
+    lineChartWidth: '100%',
+  };
 
-  getFilters() {
+  getFilters = () => {
     return this._lineChart ? this._lineChart.filters() : [];
-  },
+  };
 
-  setFilter(filter) {
+  setFilter = (filter) => {
     this._lineChart.filter(filter);
-  },
+  };
 
-  clearFilters() {
+  clearFilters = () => {
     this._lineChart.filterAll();
-  },
+  };
 
-  _configureWidth(lineChartWidth) {
+  _configureWidth = (lineChartWidth) => {
     this._lineChart.width(lineChartWidth);
     this.setState({ lineChartWidth: `${String(lineChartWidth)}px` });
-  },
+  };
 
-  updateWidth() {
+  updateWidth = () => {
     const $lineChartDomNode = $('#dc-sources-line-chart');
     const lineChartWidth = $lineChartDomNode.width();
     this._configureWidth(lineChartWidth);
-  },
+  };
 
-  renderLineChart(dimension, group, onDataFiltered) {
+  renderLineChart = (dimension, group, onDataFiltered) => {
     const lineChartDomNode = $('#dc-sources-line-chart')[0];
     const width = $(lineChartDomNode).width();
     $(document).on('mouseup', '#dc-sources-line-chart svg', (event) => {
@@ -86,7 +85,7 @@ const SourceLineChart = React.createClass({
     this._lineChart.yAxis()
       .ticks(6)
       .tickFormat(d3.format('s'));
-  },
+  };
 
   render() {
     const loadingSpinnerStyle = {
@@ -115,7 +114,7 @@ const SourceLineChart = React.createClass({
         {noDataOverlay}
       </div>
     );
-  },
-});
+  }
+}
 
 export default SourceLineChart;

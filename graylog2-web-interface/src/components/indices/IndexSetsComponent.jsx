@@ -1,6 +1,8 @@
 import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 import { LinkContainer } from 'react-router-bootstrap';
+import { Link } from 'react-router';
 import { Col, Button, Label, DropdownButton, MenuItem } from 'react-bootstrap';
 
 import { EntityList, EntityListItem, PaginatedList, Spinner } from 'components/common';
@@ -14,23 +16,27 @@ import CombinedProvider from 'injection/CombinedProvider';
 
 const { IndexSetsStore, IndexSetsActions } = CombinedProvider.get('IndexSets');
 
-const IndexSetsComponent = React.createClass({
+const IndexSetsComponent = createReactClass({
+  displayName: 'IndexSetsComponent',
   mixins: [Reflux.connect(IndexSetsStore)],
 
   componentDidMount() {
     this.loadData(1, this.PAGE_SIZE);
   },
 
+  forms: {},
+
   loadData(pageNo, limit) {
     this.currentPageNo = pageNo;
     this.currentPageSize = limit;
     IndexSetsActions.listPaginated((pageNo - 1) * limit, limit, true);
+    IndexSetsActions.stats();
   },
 
   // Stores the current page and page size to be able to reload the current page
   currentPageNo: 1,
-  currentPageSize: 10,
 
+  currentPageSize: 10,
   PAGE_SIZE: 10,
 
   _onChangePaginatedList(page, size) {
@@ -38,18 +44,14 @@ const IndexSetsComponent = React.createClass({
   },
 
   _onSetDefault(indexSet) {
-    return (e) => {
-      e.preventDefault();
-
+    return () => {
       IndexSetsActions.setDefault(indexSet).then(() => this.loadData(this.currentPageNo, this.currentPageSize));
     };
   },
 
   _onDelete(indexSet) {
-    return (_, e) => {
-      e.preventDefault();
-
-      this.refs[`index-set-deletion-form-${indexSet.id}`].open();
+    return () => {
+      this.forms[`index-set-deletion-form-${indexSet.id}`].open();
     };
   },
 
@@ -80,14 +82,14 @@ const IndexSetsComponent = React.createClass({
       <Col md={12}>
         <IndexSetDetails indexSet={indexSet} />
 
-        <IndexSetDeletionForm ref={`index-set-deletion-form-${indexSet.id}`} indexSet={indexSet} onDelete={this._deleteIndexSet} />
+        <IndexSetDeletionForm ref={(elem) => { this.forms[`index-set-deletion-form-${indexSet.id}`] = elem; }} indexSet={indexSet} onDelete={this._deleteIndexSet} />
       </Col>
     );
 
     const indexSetTitle = (
-      <LinkContainer to={Routes.SYSTEM.INDEX_SETS.SHOW(indexSet.id)}>
-        <a>{indexSet.title}</a>
-      </LinkContainer>
+      <Link to={Routes.SYSTEM.INDEX_SETS.SHOW(indexSet.id)}>
+        {indexSet.title}
+      </Link>
     );
 
     const isDefault = indexSet.default ? <Label key={`index-set-${indexSet.id}-default-label`} bsStyle="primary">default</Label> : '';
@@ -100,11 +102,7 @@ const IndexSetsComponent = React.createClass({
     let statsString;
     const stats = this.state.indexSetStats[indexSet.id];
     if (stats) {
-      const indices = `${NumberUtils.formatNumber(stats.indices)} ${StringUtils.pluralize(stats.indices, 'index', 'indices')}`;
-      const documents = `${NumberUtils.formatNumber(stats.documents)} ${StringUtils.pluralize(stats.documents, 'document', 'documents')}`;
-      const size = NumberUtils.formatBytes(stats.size);
-
-      statsString = `${indices}, ${documents}, ${size}`;
+      statsString = this._formatStatsString(stats);
     }
 
     return (
@@ -115,6 +113,17 @@ const IndexSetsComponent = React.createClass({
                       actions={actions}
                       contentRow={content} />
     );
+  },
+
+  _formatStatsString(stats) {
+    if (!stats) {
+      return 'N/A';
+    }
+    const indices = `${NumberUtils.formatNumber(stats.indices)} ${StringUtils.pluralize(stats.indices, 'index', 'indices')}`;
+    const documents = `${NumberUtils.formatNumber(stats.documents)} ${StringUtils.pluralize(stats.documents, 'document', 'documents')}`;
+    const size = NumberUtils.formatBytes(stats.size);
+
+    return `${indices}, ${documents}, ${size}`;
   },
 
   _isLoading() {
@@ -128,7 +137,13 @@ const IndexSetsComponent = React.createClass({
 
     return (
       <div>
-        <PaginatedList pageSize={this.PAGE_SIZE} totalItems={this.state.indexSetsCount} onChange={this._onChangePaginatedList}
+        <h4><strong>Total:</strong> {this._formatStatsString(this.state.globalIndexSetStats)}</h4>
+
+        <hr style={{ marginBottom: 0 }} />
+
+        <PaginatedList pageSize={this.PAGE_SIZE}
+                       totalItems={this.state.indexSetsCount}
+                       onChange={this._onChangePaginatedList}
                        showPageSizeSelect={false}>
           <EntityList bsNoItemsStyle="info"
                       noItemsText="There are no index sets to display"

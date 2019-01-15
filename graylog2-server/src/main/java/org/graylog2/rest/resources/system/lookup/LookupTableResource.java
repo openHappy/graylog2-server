@@ -35,7 +35,8 @@ import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.graylog2.audit.AuditEventTypes;
 import org.graylog2.audit.jersey.AuditEvent;
 import org.graylog2.audit.jersey.NoAuditEvent;
-import org.graylog2.events.ClusterEventBus;
+import org.graylog2.database.PaginatedList;
+import org.graylog2.lookup.CachePurge;
 import org.graylog2.lookup.LookupDefaultMultiValue;
 import org.graylog2.lookup.LookupDefaultSingleValue;
 import org.graylog2.lookup.LookupTable;
@@ -46,17 +47,10 @@ import org.graylog2.lookup.db.DBLookupTableService;
 import org.graylog2.lookup.dto.CacheDto;
 import org.graylog2.lookup.dto.DataAdapterDto;
 import org.graylog2.lookup.dto.LookupTableDto;
-import org.graylog2.lookup.events.CachesDeleted;
-import org.graylog2.lookup.events.CachesUpdated;
-import org.graylog2.lookup.events.DataAdaptersDeleted;
-import org.graylog2.lookup.events.DataAdaptersUpdated;
-import org.graylog2.lookup.events.LookupTablesDeleted;
-import org.graylog2.lookup.events.LookupTablesUpdated;
 import org.graylog2.plugin.lookup.LookupCache;
 import org.graylog2.plugin.lookup.LookupDataAdapter;
 import org.graylog2.plugin.lookup.LookupResult;
 import org.graylog2.plugin.rest.ValidationResult;
-import org.graylog2.rest.models.PaginatedList;
 import org.graylog2.rest.models.system.lookup.CacheApi;
 import org.graylog2.rest.models.system.lookup.DataAdapterApi;
 import org.graylog2.rest.models.system.lookup.ErrorStates;
@@ -67,14 +61,13 @@ import org.graylog2.search.SearchQueryField;
 import org.graylog2.search.SearchQueryParser;
 import org.graylog2.shared.rest.resources.RestResource;
 import org.graylog2.shared.security.RestPermissions;
-import org.hibernate.validator.constraints.NotEmpty;
 import org.mongojack.DBQuery;
 import org.mongojack.DBSort;
-import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.validation.Valid;
+import javax.validation.constraints.NotEmpty;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -97,9 +90,9 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.util.Collections.singleton;
 import static java.util.Objects.requireNonNull;
-import static org.slf4j.LoggerFactory.getLogger;
 
 @RequiresAuthentication
 @Path("/system/lookup")
@@ -107,8 +100,6 @@ import static org.slf4j.LoggerFactory.getLogger;
 @Consumes("application/json")
 @Api(value = "System/Lookup", description = "Lookup tables")
 public class LookupTableResource extends RestResource {
-    private static final Logger LOG = getLogger(LookupTableResource.class);
-
     private static final ImmutableSet<String> LUT_ALLOWABLE_SORT_FIELDS = ImmutableSet.of(
             LookupTableDto.FIELD_ID,
             LookupTableDto.FIELD_TITLE,
@@ -155,8 +146,6 @@ public class LookupTableResource extends RestResource {
     private final SearchQueryParser adapterSearchQueryParser;
     private final SearchQueryParser cacheSearchQueryParser;
     private final LookupTableService lookupTableService;
-    private LookupTableService lookupTables;
-    private ClusterEventBus clusterBus;
 
     @Inject
     public LookupTableResource(DBLookupTableService dbTableService,
@@ -164,15 +153,13 @@ public class LookupTableResource extends RestResource {
                                DBCacheService dbCacheService,
                                Map<String, LookupCache.Factory> cacheTypes,
                                Map<String, LookupDataAdapter.Factory> dataAdapterTypes,
-                               LookupTableService lookupTableService,
-                               ClusterEventBus clusterBus) {
+                               LookupTableService lookupTableService) {
         this.dbTableService = dbTableService;
         this.dbDataAdapterService = dbDataAdapterService;
         this.dbCacheService = dbCacheService;
         this.cacheTypes = cacheTypes;
         this.dataAdapterTypes = dataAdapterTypes;
         this.lookupTableService = lookupTableService;
-        this.clusterBus = clusterBus;
         this.lutSearchQueryParser = new SearchQueryParser(LookupTableDto.FIELD_TITLE, LUT_SEARCH_FIELD_MAPPING);
         this.adapterSearchQueryParser = new SearchQueryParser(DataAdapterDto.FIELD_TITLE, ADAPTER_SEARCH_FIELD_MAPPING);
         this.cacheSearchQueryParser = new SearchQueryParser(CacheDto.FIELD_TITLE, CACHE_SEARCH_FIELD_MAPPING);
@@ -207,6 +194,30 @@ public class LookupTableResource extends RestResource {
     public LookupResult performLookup(@ApiParam(name = "name") @PathParam("name") @NotEmpty String name,
                                       @ApiParam(name = "key") @QueryParam("key") @NotEmpty String key) {
         return lookupTableService.newBuilder().lookupTable(name).build().lookup(key);
+    }
+
+    @POST
+    @Path("tables/{idOrName}/purge")
+    @ApiOperation(value = "Purge lookup table cache")
+    @NoAuditEvent("Cache purge only")
+    @RequiresPermissions(RestPermissions.LOOKUP_TABLES_READ)
+    public void performPurge(@ApiParam(name = "idOrName") @PathParam("idOrName") @NotEmpty String idOrName,
+                             @ApiParam(name = "key") @QueryParam("key") String key) {
+        final Optional<LookupTableDto> lookupTableDto = dbTableService.get(idOrName);
+        if (!lookupTableDto.isPresent()) {
+            throw new NotFoundException("Lookup table <" + idOrName + "> not found");
+        }
+
+        final Optional<CachePurge> cachePurge = lookupTableService.newCachePurge(lookupTableDto.get().name());
+        if (cachePurge.isPresent()) {
+            if (isNullOrEmpty(key)) {
+                cachePurge.get().purgeAll();
+            } else {
+                cachePurge.get().purgeKey(key);
+            }
+        } else {
+            throw new NotFoundException("Lookup table <" + idOrName + "> not found");
+        }
     }
 
     @GET
@@ -305,11 +316,8 @@ public class LookupTableResource extends RestResource {
     public LookupTableApi createTable(@ApiParam LookupTableApi lookupTable) {
         try {
             LookupTableDto saved = dbTableService.save(lookupTable.toDto());
-            LookupTableApi table = LookupTableApi.fromDto(saved);
 
-            clusterBus.post(LookupTablesUpdated.create(saved));
-
-            return table;
+            return LookupTableApi.fromDto(saved);
         } catch (DuplicateKeyException e) {
             throw new BadRequestException(e.getMessage());
         }
@@ -324,7 +332,6 @@ public class LookupTableResource extends RestResource {
         checkLookupTableId(idOrName, toUpdate);
         checkPermission(RestPermissions.LOOKUP_TABLES_EDIT, toUpdate.id());
         LookupTableDto saved = dbTableService.save(toUpdate.toDto());
-        clusterBus.post(LookupTablesUpdated.create(saved));
 
         return LookupTableApi.fromDto(saved);
     }
@@ -341,7 +348,6 @@ public class LookupTableResource extends RestResource {
         }
         checkPermission(RestPermissions.LOOKUP_TABLES_DELETE, lookupTableDto.get().id());
         dbTableService.delete(idOrName);
-        clusterBus.post(LookupTablesDeleted.create(lookupTableDto.get()));
 
         return LookupTableApi.fromDto(lookupTableDto.get());
     }
@@ -529,7 +535,6 @@ public class LookupTableResource extends RestResource {
         try {
             DataAdapterDto dto = newAdapter.toDto();
             DataAdapterDto saved = dbDataAdapterService.save(dto);
-            clusterBus.post(DataAdaptersUpdated.create(saved.id()));
 
             return DataAdapterApi.fromDto(saved);
         } catch (DuplicateKeyException e) {
@@ -553,7 +558,6 @@ public class LookupTableResource extends RestResource {
             throw new BadRequestException("The adapter is still in use, cannot delete.");
         }
         dbDataAdapterService.delete(idOrName);
-        clusterBus.post(DataAdaptersDeleted.create(dto.id()));
 
         return DataAdapterApi.fromDto(dto);
     }
@@ -567,8 +571,6 @@ public class LookupTableResource extends RestResource {
         checkLookupAdapterId(idOrName, toUpdate);
         checkPermission(RestPermissions.LOOKUP_TABLES_EDIT, toUpdate.id());
         DataAdapterDto saved = dbDataAdapterService.save(toUpdate.toDto());
-        // the linked lookup tables will be updated by the service
-        clusterBus.post(DataAdaptersUpdated.create(saved.id()));
 
         return DataAdapterApi.fromDto(saved);
     }
@@ -686,7 +688,6 @@ public class LookupTableResource extends RestResource {
     public CacheApi createCache(@ApiParam CacheApi newCache) {
         try {
             final CacheDto saved = dbCacheService.save(newCache.toDto());
-            clusterBus.post(CachesUpdated.create(saved.id()));
             return CacheApi.fromDto(saved);
         } catch (DuplicateKeyException e) {
             throw new BadRequestException(e.getMessage());
@@ -709,7 +710,6 @@ public class LookupTableResource extends RestResource {
             throw new BadRequestException("The cache is still in use, cannot delete.");
         }
         dbCacheService.delete(idOrName);
-        clusterBus.post(CachesDeleted.create(dto.id()));
 
         return CacheApi.fromDto(dto);
     }
@@ -723,7 +723,6 @@ public class LookupTableResource extends RestResource {
         checkLookupCacheId(idOrName, toUpdate);
         checkPermission(RestPermissions.LOOKUP_TABLES_EDIT, toUpdate.id());
         CacheDto saved = dbCacheService.save(toUpdate.toDto());
-        clusterBus.post(CachesUpdated.create(saved.id()));
         return CacheApi.fromDto(saved);
     }
 
@@ -770,5 +769,4 @@ public class LookupTableResource extends RestResource {
             this.caches = caches;
         }
     }
-
 }

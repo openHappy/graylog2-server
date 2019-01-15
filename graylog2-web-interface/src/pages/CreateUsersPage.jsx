@@ -3,6 +3,7 @@ import { Row, Col } from 'react-bootstrap';
 import Routes from 'routing/Routes';
 
 import UserNotification from 'util/UserNotification';
+import history from 'util/History';
 
 import StoreProvider from 'injection/StoreProvider';
 const RolesStore = StoreProvider.getStore('Roles');
@@ -11,39 +12,32 @@ const UsersStore = StoreProvider.getStore('Users');
 import { DocumentTitle, PageHeader, Spinner } from 'components/common';
 import NewUserForm from 'components/users/NewUserForm';
 
-const CreateUsersPage = React.createClass({
-
-  propTypes: {
-    history: React.PropTypes.object,
-  },
-
-  getInitialState() {
-    return {
-      roles: undefined,
-    };
-  },
+class CreateUsersPage extends React.Component {
+  state = {
+    roles: undefined,
+  };
 
   componentDidMount() {
     RolesStore.loadRoles().then((roles) => {
       this.setState({ roles: roles });
     });
-  },
+  }
 
-  _onSubmit(r) {
+  _onSubmit = (r) => {
     const request = r;
     request.permissions = [];
     delete request['session-timeout-never'];
     UsersStore.create(request).then(() => {
       UserNotification.success(`User ${request.username} was created successfully.`, 'Success!');
-      this.props.history.replaceState(null, Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
+      history.replace(Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
     }, () => {
       UserNotification.error('Failed to create user!', 'Error!');
     });
-  },
+  };
 
-  _onCancel() {
-    this.props.history.pushState(null, Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
-  },
+  _onCancel = () => {
+    history.push(Routes.SYSTEM.AUTHENTICATION.USERS.LIST);
+  };
 
   render() {
     if (!this.state.roles) {
@@ -66,7 +60,7 @@ const CreateUsersPage = React.createClass({
         </span>
       </DocumentTitle>
     );
-  },
-});
+  }
+}
 
 export default CreateUsersPage;

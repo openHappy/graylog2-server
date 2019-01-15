@@ -1,36 +1,41 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 import { Col, Panel, Row } from 'react-bootstrap';
 
 import { ContactUs, DocumentationLink } from 'components/support';
 import DocsHelper from 'util/DocsHelper';
 
-const MalformedSearchQuery = React.createClass({
-  propTypes: {
-    error: React.PropTypes.object.isRequired,
-  },
+class MalformedSearchQuery extends React.Component {
+  static propTypes = {
+    error: PropTypes.object.isRequired,
+  };
 
-  _isGenericError(error) {
+  _isGenericError = (error) => {
     return error.column === null || error.line === null;
-  },
+  };
 
-  _getFormattedErrorDetails(details) {
-    return details.map(function(detail) {
-        return <li><code>{detail}</code></li>
+  _getFormattedErrorDetails = (details) => {
+    return details.map((detail) => {
+      return <li><code>{detail}</code></li>;
     });
-  },
+  };
 
-  _getFormattedErrorDescription(error) {
+  _getFormattedErrorDescription = (error) => {
+    let errorDetails;
+    if (error.details) {
+      errorDetails = <dd>{this._getFormattedErrorDetails(error.details)}</dd>;
+    }
     return (
       <Panel bsStyle="danger">
         <dl style={{ marginBottom: 0 }}>
           <dt>Error Message:</dt>
           <dd>{error.message}</dd>
           <dt>Details:</dt>
-          <dd>{this._getFormattedErrorDetails(error.details)}</dd>
+          {errorDetails}
         </dl>
       </Panel>
     );
-  },
+  };
 
   render() {
     const error = this.props.error.body;
@@ -80,7 +85,7 @@ const MalformedSearchQuery = React.createClass({
         <ContactUs />
       </div>
     );
-  },
-});
+  }
+}
 
 export default MalformedSearchQuery;

@@ -1,9 +1,10 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
-const ClosingRetentionStrategySummary = React.createClass({
-  propTypes: {
-    config: React.PropTypes.object.isRequired,
-  },
+class ClosingRetentionStrategySummary extends React.Component {
+  static propTypes = {
+    config: PropTypes.object.isRequired,
+  };
 
   render() {
     return (
@@ -16,7 +17,7 @@ const ClosingRetentionStrategySummary = React.createClass({
         </dl>
       </div>
     );
-  },
-});
+  }
+}
 
 export default ClosingRetentionStrategySummary;

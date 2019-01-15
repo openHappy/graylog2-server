@@ -36,15 +36,18 @@ import org.graylog2.plugin.indexer.searches.timeranges.TimeRange;
 import org.graylog2.rest.MoreMediaTypes;
 import org.graylog2.rest.models.search.responses.FieldStatsResult;
 import org.graylog2.rest.models.search.responses.HistogramResult;
+import org.graylog2.rest.models.search.responses.TermsHistogramResult;
 import org.graylog2.rest.models.search.responses.TermsResult;
 import org.graylog2.rest.models.search.responses.TermsStatsResult;
 import org.graylog2.rest.resources.search.responses.SearchResponse;
 import org.graylog2.shared.security.RestPermissions;
-import org.hibernate.validator.constraints.NotEmpty;
+import org.graylog2.utilities.SearchUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotEmpty;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -56,6 +59,8 @@ import javax.ws.rs.core.Response;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+
+import static org.graylog2.utilities.SearchUtils.buildTermsHistogramResult;
 
 @RequiresAuthentication
 @Api(value = "Search/Absolute", description = "Message search")
@@ -82,8 +87,10 @@ public class AbsoluteSearchResource extends SearchResource {
     public SearchResponse searchAbsolute(
             @ApiParam(name = "query", value = "Query (Lucene syntax)", required = true)
             @QueryParam("query") @NotEmpty String query,
-            @ApiParam(name = "from", value = "Timerange start. See description for date format", required = true) @QueryParam("from") String from,
-            @ApiParam(name = "to", value = "Timerange end. See description for date format", required = true) @QueryParam("to") String to,
+            @ApiParam(name = "from", value = "Timerange start. See description for date format", required = true)
+            @QueryParam("from") @NotEmpty String from,
+            @ApiParam(name = "to", value = "Timerange end. See description for date format", required = true)
+            @QueryParam("to") @NotEmpty String to,
             @ApiParam(name = "limit", value = "Maximum number of messages to return.", required = false) @QueryParam("limit") int limit,
             @ApiParam(name = "offset", value = "Offset", required = false) @QueryParam("offset") int offset,
             @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter,
@@ -123,19 +130,23 @@ public class AbsoluteSearchResource extends SearchResource {
     public ChunkedOutput<ScrollResult.ScrollChunk> searchAbsoluteChunked(
             @ApiParam(name = "query", value = "Query (Lucene syntax)", required = true)
             @QueryParam("query") @NotEmpty String query,
-            @ApiParam(name = "from", value = "Timerange start. See description for date format", required = true) @QueryParam("from") String from,
-            @ApiParam(name = "to", value = "Timerange end. See description for date format", required = true) @QueryParam("to") String to,
+            @ApiParam(name = "from", value = "Timerange start. See description for date format", required = true)
+            @QueryParam("from") @NotEmpty String from,
+            @ApiParam(name = "to", value = "Timerange end. See description for date format", required = true)
+            @QueryParam("to") @NotEmpty String to,
             @ApiParam(name = "limit", value = "Maximum number of messages to return.", required = false) @QueryParam("limit") int limit,
             @ApiParam(name = "offset", value = "Offset", required = false) @QueryParam("offset") int offset,
+            @ApiParam(name = "batch_size", value = "Batch size for the backend storage export request.", required = false) @QueryParam("batch_size") @DefaultValue(DEFAULT_SCROLL_BATCH_SIZE) int batchSize,
             @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter,
-            @ApiParam(name = "fields", value = "Comma separated list of fields to return", required = true) @QueryParam("fields") String fields) {
+            @ApiParam(name = "fields", value = "Comma separated list of fields to return", required = true)
+            @QueryParam("fields") @NotEmpty String fields) {
         checkSearchPermission(filter, RestPermissions.SEARCHES_ABSOLUTE);
 
         final List<String> fieldList = parseFields(fields);
         final TimeRange timeRange = buildAbsoluteTimeRange(from, to);
 
         final ScrollResult scroll = searches
-                .scroll(query, timeRange, limit, offset, fieldList, filter);
+                .scroll(query, timeRange, batchSize, offset, fieldList, filter);
         return buildChunkedOutput(scroll, limit);
     }
 
@@ -152,16 +163,20 @@ public class AbsoluteSearchResource extends SearchResource {
     public Response exportSearchAbsoluteChunked(
             @ApiParam(name = "query", value = "Query (Lucene syntax)", required = true)
             @QueryParam("query") @NotEmpty String query,
-            @ApiParam(name = "from", value = "Timerange start. See description for date format", required = true) @QueryParam("from") String from,
-            @ApiParam(name = "to", value = "Timerange end. See description for date format", required = true) @QueryParam("to") String to,
+            @ApiParam(name = "from", value = "Timerange start. See description for date format", required = true)
+            @QueryParam("from") @NotEmpty String from,
+            @ApiParam(name = "to", value = "Timerange end. See description for date format", required = true)
+            @QueryParam("to") @NotEmpty String to,
             @ApiParam(name = "limit", value = "Maximum number of messages to return.", required = false) @QueryParam("limit") int limit,
             @ApiParam(name = "offset", value = "Offset", required = false) @QueryParam("offset") int offset,
+            @ApiParam(name = "batch_size", value = "Batch size for the backend storage export request.", required = false) @QueryParam("batch_size") @DefaultValue(DEFAULT_SCROLL_BATCH_SIZE) int batchSize,
             @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter,
-            @ApiParam(name = "fields", value = "Comma separated list of fields to return", required = true) @QueryParam("fields") String fields) {
+            @ApiParam(name = "fields", value = "Comma separated list of fields to return", required = true)
+            @QueryParam("fields") @NotEmpty String fields) {
         checkSearchPermission(filter, RestPermissions.SEARCHES_ABSOLUTE);
         final String filename = "graylog-search-result-absolute-" + from + "-" + to + ".csv";
         return Response
-            .ok(searchAbsoluteChunked(query, from, to, limit, offset, filter, fields))
+            .ok(searchAbsoluteChunked(query, from, to, limit, offset, batchSize, filter, fields))
             .header("Content-Disposition", "attachment; filename=" + filename)
             .build();
     }
@@ -179,13 +194,51 @@ public class AbsoluteSearchResource extends SearchResource {
             @QueryParam("field") @NotEmpty String field,
             @ApiParam(name = "query", value = "Query (Lucene syntax)", required = true)
             @QueryParam("query") @NotEmpty String query,
+            @ApiParam(name = "stacked_fields", value = "Fields to stack", required = false) @QueryParam("stacked_fields") String stackedFieldsParam,
             @ApiParam(name = "size", value = "Maximum number of terms to return", required = false) @QueryParam("size") int size,
-            @ApiParam(name = "from", value = "Timerange start. See search method description for date format", required = true) @QueryParam("from") String from,
-            @ApiParam(name = "to", value = "Timerange end. See search method description for date format", required = true) @QueryParam("to") String to,
-            @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter) {
+            @ApiParam(name = "from", value = "Timerange start. See search method description for date format", required = true)
+            @QueryParam("from") @NotEmpty String from,
+            @ApiParam(name = "to", value = "Timerange end. See search method description for date format", required = true)
+            @QueryParam("to") @NotEmpty String to,
+            @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter,
+            @ApiParam(name = "order", value = "Sorting (field:asc / field:desc)", required = false) @QueryParam("order") String order) {
         checkSearchPermission(filter, RestPermissions.SEARCHES_ABSOLUTE);
 
-        return buildTermsResult(searches.terms(field, size, query, filter, buildAbsoluteTimeRange(from, to)));
+        final List<String> stackedFields = splitStackedFields(stackedFieldsParam);
+        final Sorting sortOrder = buildSorting(order);
+        return buildTermsResult(searches.terms(field, stackedFields, size, query, filter, buildAbsoluteTimeRange(from, to), sortOrder.getDirection()));
+    }
+
+    @GET
+    @Path("/terms-histogram")
+    @Timed
+    @ApiOperation(value = "Most common field terms of a query over time using an absolute timerange.")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "Invalid timerange parameters provided.")
+    })
+    @Produces(MediaType.APPLICATION_JSON)
+    public TermsHistogramResult termsHistogramRelative(
+            @ApiParam(name = "field", value = "Message field of to return terms of", required = true)
+            @QueryParam("field") @NotEmpty String field,
+            @ApiParam(name = "query", value = "Query (Lucene syntax)", required = true)
+            @QueryParam("query") @NotEmpty String query,
+            @ApiParam(name = "stacked_fields", value = "Fields to stack", required = false) @QueryParam("stacked_fields") String stackedFieldsParam,
+            @ApiParam(name = "size", value = "Maximum number of terms to return", required = true) @QueryParam("size") @Min(1) int size,
+            @ApiParam(name = "from", value = "Timerange start. See search method description for date format", required = true)
+            @QueryParam("from") @NotEmpty String from,
+            @ApiParam(name = "to", value = "Timerange end. See search method description for date format", required = true)
+            @QueryParam("to") @NotEmpty String to,
+            @ApiParam(name = "interval", value = "Histogram interval / bucket size. (year, quarter, month, week, day, hour or minute)", required = true)
+            @QueryParam("interval") String interval,
+            @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter,
+            @ApiParam(name = "order", value = "Sorting (field:asc / field:desc)", required = false) @QueryParam("order") String order) {
+        checkSearchPermission(filter, RestPermissions.SEARCHES_RELATIVE);
+
+        final List<String> stackedFields = splitStackedFields(stackedFieldsParam);
+        final Sorting sortOrder = buildSorting(order);
+        final TimeRange timeRange = buildAbsoluteTimeRange(from, to);
+
+        return buildTermsHistogramResult(searches.termsHistogram(field, stackedFields, size, query, filter, timeRange, SearchUtils.buildInterval(interval, timeRange), sortOrder.getDirection()));
     }
 
     @GET
@@ -206,8 +259,10 @@ public class AbsoluteSearchResource extends SearchResource {
             @ApiParam(name = "query", value = "Query (Lucene syntax)", required = true)
             @QueryParam("query") @NotEmpty String query,
             @ApiParam(name = "size", value = "Maximum number of terms to return", required = false) @QueryParam("size") int size,
-            @ApiParam(name = "from", value = "Timerange start. See search method description for date format", required = true) @QueryParam("from") String from,
-            @ApiParam(name = "to", value = "Timerange end. See search method description for date format", required = true) @QueryParam("to") String to,
+            @ApiParam(name = "from", value = "Timerange start. See search method description for date format", required = true)
+            @QueryParam("from") @NotEmpty String from,
+            @ApiParam(name = "to", value = "Timerange end. See search method description for date format", required = true)
+            @QueryParam("to") @NotEmpty String to,
             @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter) {
         checkSearchPermission(filter, RestPermissions.SEARCHES_ABSOLUTE);
 
@@ -238,8 +293,10 @@ public class AbsoluteSearchResource extends SearchResource {
             @QueryParam("field") @NotEmpty String field,
             @ApiParam(name = "query", value = "Query (Lucene syntax)", required = true)
             @QueryParam("query") @NotEmpty String query,
-            @ApiParam(name = "from", value = "Timerange start. See search method description for date format", required = true) @QueryParam("from") String from,
-            @ApiParam(name = "to", value = "Timerange end. See search method description for date format", required = true) @QueryParam("to") String to,
+            @ApiParam(name = "from", value = "Timerange start. See search method description for date format", required = true)
+            @QueryParam("from") @NotEmpty String from,
+            @ApiParam(name = "to", value = "Timerange end. See search method description for date format", required = true)
+            @QueryParam("to") @NotEmpty String to,
             @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter) {
         checkSearchPermission(filter, RestPermissions.SEARCHES_ABSOLUTE);
 
@@ -260,8 +317,10 @@ public class AbsoluteSearchResource extends SearchResource {
             @QueryParam("query") @NotEmpty String query,
             @ApiParam(name = "interval", value = "Histogram interval / bucket size. (year, quarter, month, week, day, hour or minute)", required = true)
             @QueryParam("interval") @NotEmpty String interval,
-            @ApiParam(name = "from", value = "Timerange start. See search method description for date format", required = true) @QueryParam("from") String from,
-            @ApiParam(name = "to", value = "Timerange end. See search method description for date format", required = true) @QueryParam("to") String to,
+            @ApiParam(name = "from", value = "Timerange start. See search method description for date format", required = true)
+            @QueryParam("from") @NotEmpty String from,
+            @ApiParam(name = "to", value = "Timerange end. See search method description for date format", required = true)
+            @QueryParam("to") @NotEmpty String to,
             @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter) {
         checkSearchPermission(filter, RestPermissions.SEARCHES_ABSOLUTE);
 
@@ -295,8 +354,10 @@ public class AbsoluteSearchResource extends SearchResource {
             @QueryParam("field") @NotEmpty String field,
             @ApiParam(name = "interval", value = "Histogram interval / bucket size. (year, quarter, month, week, day, hour or minute)", required = true)
             @QueryParam("interval") @NotEmpty String interval,
-            @ApiParam(name = "from", value = "Timerange start. See search method description for date format", required = true) @QueryParam("from") String from,
-            @ApiParam(name = "to", value = "Timerange end. See search method description for date format", required = true) @QueryParam("to") String to,
+            @ApiParam(name = "from", value = "Timerange start. See search method description for date format", required = true)
+            @QueryParam("from") @NotEmpty String from,
+            @ApiParam(name = "to", value = "Timerange end. See search method description for date format", required = true)
+            @QueryParam("to") @NotEmpty String to,
             @ApiParam(name = "filter", value = "Filter", required = false) @QueryParam("filter") String filter,
             @ApiParam(name = "cardinality", value = "Calculate the cardinality of the field as well", required = false) @QueryParam("cardinality") boolean includeCardinality
     ) {
@@ -307,7 +368,6 @@ public class AbsoluteSearchResource extends SearchResource {
 
         return buildHistogramResult(fieldHistogram(field, query, interval, filter, buildAbsoluteTimeRange(from, to),
                                                    includeCardinality));
-
     }
 
     private TimeRange buildAbsoluteTimeRange(String from, String to) {

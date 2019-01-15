@@ -1,6 +1,3 @@
-/// <reference path="../../../declarations/bluebird/bluebird.d.ts" />
-/// <reference path="../../../declarations/typeahead/typeahead.d.ts" />
-
 'use strict';
 
 const StoreProvider = require('injection/StoreProvider');
@@ -8,6 +5,7 @@ const FieldsStore = StoreProvider.getStore('Fields');
 import queryParser = require('../../logic/search/queryParser');
 import SerializeVisitor = require('../../logic/search/visitors/SerializeVisitor');
 import DumpVisitor = require('../../logic/search/visitors/DumpVisitor');
+import lodash = require('lodash');
 const $ = require('jquery');
 const Typeahead = require('typeahead.js');
 
@@ -45,14 +43,14 @@ class QueryInput {
             displayKey: this.displayKey,
             source: this.codeCompletionProvider.bind(this),
             templates: {
-                // TODO: highlight errors on suggestions once query parser is completed
-                suggestion: (match: Match) => {
-                    var previousTerms = match.prefix;
-                    var matchPrefix = match.match.substring(0, match.match.indexOf(match.currentSegment));
-                    var currentMatch = match.currentSegment;
-                    var matchSuffix = match.match.substring(match.match.indexOf(match.currentSegment) + match.currentSegment.length);
-                    return '<p><strong>' + previousTerms + '</strong>' + matchPrefix + '<strong>' + currentMatch + '</strong>' + matchSuffix + '</p>';
-                }
+              // Escape all text here that may be user-generated, since this is not automatically escaped by React.
+              suggestion: (match: Match) => {
+                const previousTerms = match.prefix;
+                const matchPrefix = match.match.substring(0, match.match.indexOf(match.currentSegment));
+                const currentMatch = match.currentSegment;
+                const matchSuffix = match.match.substring(match.match.indexOf(match.currentSegment) + match.currentSegment.length);
+                return `<p><strong>${lodash.escape(previousTerms)}</strong>${lodash.escape(matchPrefix)}<strong>${lodash.escape(currentMatch)}</strong>${lodash.escape(matchSuffix)}</p>`;
+              }
             }
         };
     }
@@ -148,7 +146,7 @@ class QueryInput {
         this.fields.forEach((field) => {
             possibleMatches.push(field + ":");
             possibleMatches.push("_exists_:" + field);
-            possibleMatches.push("_missing_:" + field);
+            possibleMatches.push("NOT _exists_:" + field);
         });
         return possibleMatches;
     }

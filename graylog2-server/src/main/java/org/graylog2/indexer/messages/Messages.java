@@ -16,6 +16,7 @@
  */
 package org.graylog2.indexer.messages;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.github.joschi.jadconfig.util.Duration;
@@ -34,12 +35,12 @@ import io.searchbox.core.DocumentResult;
 import io.searchbox.core.Get;
 import io.searchbox.core.Index;
 import io.searchbox.indices.Analyze;
-import io.searchbox.params.Parameters;
 import org.graylog2.indexer.IndexFailure;
 import org.graylog2.indexer.IndexFailureImpl;
 import org.graylog2.indexer.IndexMapping;
 import org.graylog2.indexer.IndexSet;
 import org.graylog2.indexer.results.ResultMessage;
+import org.graylog2.plugin.GlobalMetricNames;
 import org.graylog2.plugin.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,11 +82,15 @@ public class Messages {
     private final Meter invalidTimestampMeter;
     private final JestClient client;
     private final LinkedBlockingQueue<List<IndexFailure>> indexFailureQueue;
+    private final Counter outputByteCounter;
+    private final Counter systemTrafficCounter;
 
     @Inject
     public Messages(MetricRegistry metricRegistry,
                     JestClient client) {
         invalidTimestampMeter = metricRegistry.meter(name(Messages.class, "invalid-timestamps"));
+        outputByteCounter = metricRegistry.counter(GlobalMetricNames.OUTPUT_TRAFFIC);
+        systemTrafficCounter = metricRegistry.counter(GlobalMetricNames.SYSTEM_OUTPUT_TRAFFIC);
         this.client = client;
 
         // TODO: Magic number
@@ -119,17 +124,27 @@ public class Messages {
     }
 
     public List<String> bulkIndex(final List<Map.Entry<IndexSet, Message>> messageList) {
+        return bulkIndex(messageList, false);
+    }
+
+    public List<String> bulkIndex(final List<Map.Entry<IndexSet, Message>> messageList, boolean isSystemTraffic) {
         if (messageList.isEmpty()) {
             return Collections.emptyList();
         }
 
         final Bulk.Builder bulk = new Bulk.Builder();
         for (Map.Entry<IndexSet, Message> entry : messageList) {
-            final String id = entry.getValue().getId();
-            bulk.addAction(new Index.Builder(entry.getValue().toElasticSearchObject(invalidTimestampMeter))
+            final Message message = entry.getValue();
+            if (isSystemTraffic) {
+                systemTrafficCounter.inc(message.getSize());
+            } else {
+                outputByteCounter.inc(message.getSize());
+            }
+
+            bulk.addAction(new Index.Builder(message.toElasticSearchObject(invalidTimestampMeter))
                 .index(entry.getKey().getWriteIndexAlias())
                 .type(IndexMapping.TYPE_MESSAGE)
-                .id(id)
+                .id(message.getId())
                 .build());
         }
 
@@ -169,7 +184,7 @@ public class Messages {
         final List<String> failedMessageIds = new ArrayList<>(items.size());
         final List<IndexFailure> indexFailures = new ArrayList<>(items.size());
         for (BulkResult.BulkResultItem item : items) {
-            LOG.trace("Failed to index message: {}", item.error);
+            LOG.warn("Failed to index message: index=<{}> id=<{}> error=<{}>", item.index, item.id, item.error);
 
             // Write failure to index_failures.
             final Message messageEntry = messageMap.get(item.id);
@@ -206,7 +221,6 @@ public class Messages {
                 .index(index)
                 .type(IndexMapping.TYPE_MESSAGE)
                 .id(id)
-                .setParameter(Parameters.CONSISTENCY, "one")
                 .build();
     }
 

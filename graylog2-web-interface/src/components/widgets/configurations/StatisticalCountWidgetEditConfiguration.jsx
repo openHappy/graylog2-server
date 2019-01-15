@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import { Input } from 'components/bootstrap';
 
 import { QueryConfiguration, CountWidgetEditConfiguration } from 'components/widgets/configurations';
@@ -6,11 +7,12 @@ import { QueryConfiguration, CountWidgetEditConfiguration } from 'components/wid
 import StoreProvider from 'injection/StoreProvider';
 const FieldStatisticsStore = StoreProvider.getStore('FieldStatistics');
 
-const StatisticalCountWidgetConfiguration = React.createClass({
-  propTypes: {
+class StatisticalCountWidgetConfiguration extends React.Component {
+  static propTypes = {
     config: PropTypes.object.isRequired,
     onChange: PropTypes.func.isRequired,
-  },
+  };
+
   render() {
     const defaultStatisticalFunction = this.props.config.stats_function === 'stddev' ? 'std_deviation' : this.props.config.stats_function;
 
@@ -36,7 +38,7 @@ const StatisticalCountWidgetConfiguration = React.createClass({
         <CountWidgetEditConfiguration {...this.props} showQueryConfig={false} />
       </fieldset>
     );
-  },
-});
+  }
+}
 
 export default StatisticalCountWidgetConfiguration;

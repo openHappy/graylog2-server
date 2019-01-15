@@ -1,4 +1,6 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
+import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 
 import { Spinner } from 'components/common';
@@ -8,11 +10,12 @@ import CombinedProvider from 'injection/CombinedProvider';
 const { LookupTableCachesActions, LookupTableCachesStore } = CombinedProvider.get(
   'LookupTableCaches');
 
-const CachesContainer = React.createClass({
+const CachesContainer = createReactClass({
+  displayName: 'CachesContainer',
 
   propTypes: {
     children: PropTypes.oneOfType([
-      PropTypes.arrayOf(React.PropTypes.node),
+      PropTypes.arrayOf(PropTypes.node),
       PropTypes.node,
     ]),
   },

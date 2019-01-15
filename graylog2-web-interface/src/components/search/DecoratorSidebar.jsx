@@ -1,4 +1,6 @@
+import PropTypes from 'prop-types';
 import React from 'react';
+import createReactClass from 'create-react-class';
 import ReactDOM from 'react-dom';
 import Reflux from 'reflux';
 import { Button, OverlayTrigger, Popover } from 'react-bootstrap';
@@ -18,12 +20,16 @@ const DecoratorsActions = ActionsProvider.getActions('Decorators');
 
 import DecoratorStyles from '!style!css!components/search/decoratorStyles.css';
 
-const DecoratorSidebar = React.createClass({
+const DecoratorSidebar = createReactClass({
+  displayName: 'DecoratorSidebar',
+
   propTypes: {
-    stream: React.PropTypes.string,
-    maximumHeight: React.PropTypes.number,
+    stream: PropTypes.string,
+    maximumHeight: PropTypes.number,
   },
+
   mixins: [Reflux.connect(DecoratorsStore), Reflux.connect(CurrentUserStore), PermissionsMixin],
+
   getInitialState() {
     return {
       maxDecoratorsHeight: 1000,
@@ -48,7 +54,7 @@ const DecoratorSidebar = React.createClass({
   MINIMUM_DECORATORS_HEIGHT: 50,
 
   _updateHeight() {
-    const decoratorsContainer = ReactDOM.findDOMNode(this.refs.decoratorsContainer);
+    const decoratorsContainer = ReactDOM.findDOMNode(this.decoratorsContainer);
     const maxHeight = this.props.maximumHeight - decoratorsContainer.getBoundingClientRect().top;
 
     this.setState({ maxDecoratorsHeight: Math.max(maxHeight, this.MINIMUM_DECORATORS_HEIGHT) });
@@ -61,6 +67,7 @@ const DecoratorSidebar = React.createClass({
                                                    decorator={decorator}
                                                    typeDefinition={typeDefinition} /> });
   },
+
   _updateOrder(decorators) {
     decorators.forEach((item, idx) => {
       const decorator = this.state.decorators.find(i => i.id === item.id);
@@ -68,6 +75,7 @@ const DecoratorSidebar = React.createClass({
       DecoratorsActions.update(decorator.id, decorator);
     });
   },
+
   render() {
     if (!this.state.decorators) {
       return <Spinner />;
@@ -101,7 +109,7 @@ const DecoratorSidebar = React.createClass({
             <Button bsStyle="link" className={DecoratorStyles.helpLink}>What are message decorators?</Button>
           </OverlayTrigger>
         </div>
-        <div ref="decoratorsContainer" className={DecoratorStyles.decoratorListContainer} style={{ maxHeight: this.state.maxDecoratorsHeight }}>
+        <div ref={(decoratorsContainer) => { this.decoratorsContainer = decoratorsContainer; }} className={DecoratorStyles.decoratorListContainer} style={{ maxHeight: this.state.maxDecoratorsHeight }}>
           <DecoratorList decorators={decoratorItems} onReorder={this._updateOrder} disableDragging={!editPermissions} />
         </div>
       </div>

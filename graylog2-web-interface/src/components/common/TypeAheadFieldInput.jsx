@@ -1,4 +1,5 @@
-import React, { PropTypes } from 'react';
+import PropTypes from 'prop-types';
+import React from 'react';
 import ReactDOM from 'react-dom';
 import Immutable from 'immutable';
 import $ from 'jquery';
@@ -12,15 +13,33 @@ import ApiRoutes from 'routing/ApiRoutes';
 import URLUtils from 'util/URLUtils';
 import fetch from 'logic/rest/FetchProvider';
 
-const TypeAheadFieldInput = React.createClass({
-  propTypes: {
+/**
+ * Component that renders an input offering auto-completion for message fields.
+ * Fields are loaded from the Graylog server in the background.
+ */
+class TypeAheadFieldInput extends React.Component {
+  static propTypes = {
+    /** ID of the input. */
+    id: PropTypes.string.isRequired,
+    /**
+     * @deprecated React v15 deprecated `valueLink`s. Please use `onChange`
+     * instead.
+     */
     valueLink: PropTypes.object,
+    /** Specifies if the input should have the input focus or not. */
     autoFocus: PropTypes.bool,
+    /**
+     * Function that is called when the input changes. The function receives
+     * the typeahead event object for the event that triggered the change. For
+     * more information on typeahead events, see:
+     * https://github.com/twitter/typeahead.js/blob/master/doc/jquery_typeahead.md#custom-events
+     */
     onChange: PropTypes.func,
-  },
+  };
+
   componentDidMount() {
-    if (this.refs.fieldInput) {
-      const fieldInput = $(this.refs.fieldInput.getInputDOMNode());
+    if (this.fieldInput) {
+      const fieldInput = $(this.fieldInput.getInputDOMNode());
       fetch('GET', URLUtils.qualifyUrl(ApiRoutes.SystemApiController.fields().url))
         .then(
           (data) => {
@@ -42,7 +61,7 @@ const TypeAheadFieldInput = React.createClass({
             }
           });
 
-      const fieldFormGroup = ReactDOM.findDOMNode(this.refs.fieldInput);
+      const fieldFormGroup = ReactDOM.findDOMNode(this.fieldInput);
       $(fieldFormGroup).on('typeahead:change typeahead:selected', (event) => {
         if (this.props.onChange) {
           this.props.onChange(event);
@@ -52,17 +71,18 @@ const TypeAheadFieldInput = React.createClass({
         }
       });
     }
-  },
+  }
+
   componentWillUnmount() {
-    if (this.refs.fieldInput) {
-      const fieldInput = $(this.refs.fieldInput.getInputDOMNode());
+    if (this.fieldInput) {
+      const fieldInput = $(this.fieldInput.getInputDOMNode());
       fieldInput.typeahead('destroy');
-      const fieldFormGroup = ReactDOM.findDOMNode(this.refs.fieldInput);
+      const fieldFormGroup = ReactDOM.findDOMNode(this.fieldInput);
       $(fieldFormGroup).off('typeahead:change typeahead:selected');
     }
-  },
+  }
 
-  _getFilteredProps() {
+  _getFilteredProps = () => {
     let props = Immutable.fromJS(this.props);
 
     ['valueLink', 'onChange'].forEach((key) => {
@@ -72,16 +92,18 @@ const TypeAheadFieldInput = React.createClass({
     });
 
     return props.toJS();
-  },
+  };
 
   render() {
     return (
-      <Input ref="fieldInput" label={this.props.label}
+      <Input id={this.props.id}
+             ref={(fieldInput) => { this.fieldInput = fieldInput; }}
+             label={this.props.label}
              wrapperClassName="typeahead-wrapper"
              defaultValue={this.props.valueLink ? this.props.valueLink.value : null}
-        {...this._getFilteredProps()} />
+             {...this._getFilteredProps()} />
     );
-  },
-});
+  }
+}
 
 export default TypeAheadFieldInput;
