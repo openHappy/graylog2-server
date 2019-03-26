@@ -79,8 +79,8 @@ public class V20180212165000_AddDefaultCollectors extends Migration {
                         "output.logstash:\n" +
                         "   hosts: [\"192.168.1.1:5044\"]\n" +
                         "path:\n" +
-                        "  data: /var/cache/graylog-sidecar/filebeat/data\n" +
-                        "  logs: /var/log/graylog-sidecar"
+                        "  data: /var/lib/graylog-sidecar/collectors/filebeat/data\n" +
+                        "  logs: /var/lib/graylog-sidecar/collectors/filebeat/log"
         );
         ensureCollector(
                 "winlogbeat",
@@ -126,9 +126,9 @@ public class V20180212165000_AddDefaultCollectors extends Migration {
                         "Group nxlog\n" +
                         "\n" +
                         "Moduledir /usr/lib/nxlog/modules\n" +
-                        "CacheDir /var/spool/collector-sidecar/nxlog\n" +
-                        "PidFile /var/run/graylog-sidecar/nxlog.pid\n" +
-                        "LogFile /var/log/graylog-sidecar/nxlog.log\n" +
+                        "CacheDir /var/spool/nxlog/data\n" +
+                        "PidFile /var/run/nxlog/nxlog.pid\n" +
+                        "LogFile /var/log/nxlog/nxlog.log\n" +
                         "LogLevel INFO\n" +
                         "\n" +
                         "\n" +
@@ -279,14 +279,14 @@ public class V20180212165000_AddDefaultCollectors extends Migration {
                                    String defaultTemplate) {
         Collector collector = null;
         try {
-            collector = collectorService.findByName(collectorName);
+            collector = collectorService.findByNameAndOs(collectorName, nodeOperatingSystem);
             if (collector == null) {
-                final String msg = "Couldn't find collector '" + collectorName + "' fixing it.";
-                LOG.error(msg);
-                throw new IllegalArgumentException(msg);
+                final String msg = "Couldn't find collector '{} on {}' fixing it.";
+                LOG.error(msg, collectorName, nodeOperatingSystem);
+                throw new IllegalArgumentException();
             }
         } catch (IllegalArgumentException ignored) {
-            LOG.info("{} collector is missing, adding it.", collectorName);
+            LOG.info("{} collector on {} is missing, adding it.", collectorName, nodeOperatingSystem);
             final Collector newCollector;
             newCollector = Collector.create(
                     null,

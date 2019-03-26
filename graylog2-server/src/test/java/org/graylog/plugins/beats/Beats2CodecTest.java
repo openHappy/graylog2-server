@@ -47,7 +47,7 @@ public class Beats2CodecTest {
 
     @Before
     public void setUp() throws Exception {
-        configuration = new Configuration(Collections.singletonMap("beats_prefix", true));
+        configuration = new Configuration(Collections.singletonMap("no_beats_prefix", false));
         codec = new Beats2Codec(configuration, objectMapper);
     }
 
@@ -58,7 +58,7 @@ public class Beats2CodecTest {
 
     @Test
     public void decodeMessagesHandlesFilebeatMessagesWithoutPrefix() throws Exception {
-        configuration = new Configuration(Collections.singletonMap("beats_prefix", false));
+        configuration = new Configuration(Collections.singletonMap("no_beats_prefix", true));
         codec = new Beats2Codec(configuration, objectMapper);
 
         final Message message = codec.decode(messageFromJson("filebeat.json"));
@@ -70,6 +70,8 @@ public class Beats2CodecTest {
         assertThat(message.getField("input_type")).isEqualTo("log");
         assertThat(message.getField("count")).isEqualTo(1);
         assertThat(message.getField("offset")).isEqualTo(0);
+        assertThat(message.getField(Message.FIELD_GL2_SOURCE_COLLECTOR)).isEqualTo("1234-5678-1234-5678");
+        assertThat(message.getField("filebeat_" + Message.FIELD_GL2_SOURCE_COLLECTOR)).isNull();
         @SuppressWarnings("unchecked") final List<String> tags = (List<String>) message.getField("tags");
         assertThat(tags).containsOnly("foobar", "test");
     }
@@ -86,6 +88,9 @@ public class Beats2CodecTest {
         assertThat(message.getField("filebeat_input_type")).isEqualTo("log");
         assertThat(message.getField("filebeat_count")).isEqualTo(1);
         assertThat(message.getField("filebeat_offset")).isEqualTo(0);
+        assertThat(message.getField(Message.FIELD_GL2_SOURCE_COLLECTOR)).isEqualTo("1234-5678-1234-5678");
+        assertThat(message.getField("filebeat_message")).isNull(); //should not be duplicated from "message"
+        assertThat(message.getField("filebeat_" + Message.FIELD_GL2_SOURCE_COLLECTOR)).isNull();
         @SuppressWarnings("unchecked") final List<String> tags = (List<String>) message.getField("filebeat_tags");
         assertThat(tags).containsOnly("foobar", "test");
     }

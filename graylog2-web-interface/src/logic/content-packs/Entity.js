@@ -1,9 +1,10 @@
 import { Map } from 'immutable';
+import { findIndex } from 'lodash';
 import ValueRefHelper from 'util/ValueRefHelper';
 import Constraint from './Constraint';
 
 export default class Entity {
-  constructor(v, type, id, data, fromServer = false, constraintValues = []) {
+  constructor(v, type, id, data, fromServer = false, constraintValues = [], parameters = []) {
     const constraints = constraintValues.map((c) => {
       if (c instanceof Constraint) {
         return c;
@@ -18,12 +19,13 @@ export default class Entity {
       data,
       constraints,
       fromServer,
+      parameters,
     };
   }
 
-  static fromJSON(value, fromServer = true) {
+  static fromJSON(value, fromServer = true, parameters = []) {
     const { v, type, id, data, constraints } = value;
-    return new Entity(v, type, id, data, fromServer, constraints);
+    return new Entity(v, type, id, data, fromServer, constraints, parameters);
   }
 
   get v() {
@@ -62,6 +64,19 @@ export default class Entity {
     return this.getValueFromData('description') || '';
   }
 
+  /* eslint-disable-next-line class-methods-use-this */
+  get isEntity() {
+    return true;
+  }
+
+  /* implement custom instanceof */
+  static [Symbol.hasInstance](obj) {
+    if (obj.isEntity) {
+      return true;
+    }
+    return false;
+  }
+
   getValueFromData(key) {
     const { data } = this._value;
     if (!data || !data[key]) {
@@ -69,7 +84,14 @@ export default class Entity {
     }
 
     if (ValueRefHelper.dataIsValueRef(data[key])) {
-      return (data[key] || {})[ValueRefHelper.VALUE_REF_VALUE_FIELD];
+      const value = (data[key] || {})[ValueRefHelper.VALUE_REF_VALUE_FIELD];
+      if (ValueRefHelper.dataValueIsParameter(data[key])) {
+        const index = findIndex(this._value.parameters, { name: value });
+        if (index >= 0 && this._value.parameters[index].default_value) {
+          return this._value.parameters[index].default_value;
+        }
+      }
+      return value;
     }
     return data[key];
   }
@@ -82,6 +104,7 @@ export default class Entity {
       data,
       constraints,
       fromServer,
+      parameters,
     } = this._value;
     /* eslint-disable-next-line no-use-before-define */
     return new Builder(Map({
@@ -91,6 +114,7 @@ export default class Entity {
       data,
       constraints,
       fromServer,
+      parameters,
     }));
   }
 
@@ -153,6 +177,11 @@ class Builder {
     return this;
   }
 
+  parameters(value) {
+    this.value = this.value.set('parameters', value);
+    return this;
+  }
+
   build() {
     const {
       v,
@@ -161,7 +190,8 @@ class Builder {
       data,
       constraints,
       fromServer,
+      parameters,
     } = this.value.toObject();
-    return new Entity(v, type, id, data, fromServer, constraints);
+    return new Entity(v, type, id, data, fromServer, constraints, parameters);
   }
 }
